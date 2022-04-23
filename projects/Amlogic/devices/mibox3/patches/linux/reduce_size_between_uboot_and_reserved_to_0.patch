@@ -1,0 +1,25 @@
+From 3ddd768727f28186c08cf584b30498ff1d28cada Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Thu, 21 Apr 2022 21:53:20 +0800
+Subject: [PATCH 1/2] Reduced reserved space to 0, adapting mi box 3
+
+---
+ include/linux/mmc/emmc_partitions.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/mmc/emmc_partitions.h b/include/linux/mmc/emmc_partitions.h
+index c4f957df590..fbd0ba032c0 100644
+--- a/include/linux/mmc/emmc_partitions.h
++++ b/include/linux/mmc/emmc_partitions.h
+@@ -28,7 +28,7 @@
+ #define     MMC_BOOT_PARTITION_SIZE         (4*SZ_1M)
+ 
+ /* the size of reserve space behind bootloader partition */
+-#define     MMC_BOOT_PARTITION_RESERVED     (32*SZ_1M)
++#define     MMC_BOOT_PARTITION_RESERVED     0
+ 
+ #define     RESULT_OK                       0
+ #define     RESULT_FAIL                     1
+-- 
+2.35.3
+
