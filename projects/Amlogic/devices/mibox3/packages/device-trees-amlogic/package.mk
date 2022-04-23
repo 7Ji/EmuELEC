@@ -4,8 +4,8 @@
 # Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 PKG_NAME="device-trees-amlogic"
-PKG_VERSION="db3119fa719bbe0a1f7086cfb7440423632df7e3"
-PKG_SHA256="153754e70eb2020417039619be6cdde9e637cd6fc39db09fa55faf769b8eb83a"
+PKG_VERSION="fcf78f8e6f20b7a42b89641099389ad0337d0bf4"
+PKG_SHA256="edcf668e52c44d0eae49ce67a1adabcd25f5b94f3c0e4d1ed1c806769d04961e"
 PKG_LICENSE="GPL"
 PKG_SITE="https://github.com/7Ji/device-trees-amlogic"
 PKG_URL="https://github.com/7Ji/device-trees-amlogic/archive/$PKG_VERSION.tar.gz"
@@ -19,32 +19,17 @@ make_target() {
   # Enter kernel directory
   pushd $BUILD/linux-$(kernel_version) > /dev/null
 
-  # Device trees already present in kernel tree we want to include
-  EXTRA_TREES=( \
-                gxbb_p200 gxbb_p200_2G gxbb_p201 gxbb_p200_1G_wetek_hub gxbb_p200_2G_wetek_play_2 \
-                gxl_p212_1g gxl_p212_2g gxl_p230_2g gxl_p281_1g gxm_q200_2g gxm_q201_1g gxm_q201_2g \
-	      )
-
-  # Add trees to the list
-  for f in ${EXTRA_TREES[@]}; do
-    DTB_LIST="$DTB_LIST $f.dtb"
-  done
-
-  # Copy all device trees to kernel source folder and create a list
-  cp -f $PKG_BUILD/*.dts* arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/
-  for f in $PKG_BUILD/*.dts; do
-    DTB_NAME="$(basename $f .dts).dtb"
-    DTB_LIST="$DTB_LIST $DTB_NAME"
-  done
+  DTB_NAME="gxbb_p200_1G_mibox3"
+  cp -f $PKG_BUILD/$DTB_NAME.dts arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/
 
   # Compile device trees
-  kernel_make $DTB_LIST
-  cp arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/*.dtb $PKG_BUILD
+  kernel_make ${DTB_NAME}.dtb
+  cp arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/${DTB_NAME}.dtb $PKG_BUILD
 
   popd > /dev/null
 }
 
 makeinstall_target() {
-  mkdir -p $INSTALL/usr/share/bootloader/device_trees
-  cp -a $PKG_BUILD/*.dtb $INSTALL/usr/share/bootloader/device_trees
+  mkdir -p $INSTALL/usr/share/bootloader
+  cp -a $PKG_BUILD/gxbb_p200_1G_mibox3.dtb $INSTALL/usr/share/bootloader/dtb.img
 }
