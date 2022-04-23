@@ -4,7 +4,7 @@
 PKG_NAME="android-simg2img"
 PKG_VERSION="1.1.4"
 PKG_SHA256="cbd32490c1e29d9025601b81089b5aec1707cb62020dfcecd8747af4fde6fecd"
-PKG_LICENSE="GPL"
+PKG_LICENSE="OSS"
 PKG_SITE="https://github.com/anestisb/android-simg2img"
 PKG_URL="https://github.com/anestisb/$PKG_NAME/archive/${PKG_VERSION}.tar.gz"
 PKG_DEPENDS_HOST="toolchain zlib:host"
