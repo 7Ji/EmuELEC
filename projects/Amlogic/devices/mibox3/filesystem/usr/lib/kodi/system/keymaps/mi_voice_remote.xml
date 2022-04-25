@@ -1,0 +1,9 @@
+<keymap>
+    <global>
+        <keyboard>
+            <key id="61588">activatewindow(home)</key>
+            <!-- <key id="61662">mute</key> -->
+            <!-- The key above (61662) is the power button, since it's impossible to wake the box up with it, I prefer using it as the mute botton, and unplug the power to power the box off. But I guess many will complain about it, so it's up to yourself whether to replace it -->
+        </keyboard>
+    </global>
+</keymap>
