@@ -9,7 +9,7 @@ function safe_set_env() {
     local ENV_KEY="$1"
     local ENV_VALUE="$2"
     local ENV_DEFAULT="$3"
-    local ENV_EXIST=$(fw_printenv -n  "$1") 2>/dev/null
+    local ENV_EXIST=$($PRINTENV -n  "$1") 2>/dev/null
     if [[ $? == 0 ]]; then
         if [[ "$ENV_EXIST" == "$ENV_VALUE" ]]; then
             echo "Note: u-boot environment '$ENV_KEY' is already set, no need to update"
@@ -20,7 +20,7 @@ function safe_set_env() {
             exit
         fi
     else
-        $PRINTENV "$ENV_KEY" "$ENV_VALUE"
+        $SETENV "$ENV_KEY" "$ENV_VALUE"
     fi
 }
 
