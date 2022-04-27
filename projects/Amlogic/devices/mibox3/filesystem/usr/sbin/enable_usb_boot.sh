@@ -17,7 +17,7 @@ function safe_set_env() {
             $SETENV "$ENV_KEY" "$ENV_VALUE"
         else
             echo "ERROR: u-boot environment '$ENV_KEY' already set and differs from default value, refuse to update u-boot"
-            exit
+            exit 1
         fi
     else
         $SETENV "$ENV_KEY" "$ENV_VALUE"
