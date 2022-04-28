@@ -24,12 +24,12 @@ function safe_set_env() {
     fi
 }
 
-safe_set_env storeboot 'run storeargs; ${bootcmd}'
+safe_set_env storeboot "run storeargs; $($PRINTENV -n  bootcmd 2>/dev/null)"
 safe_set_env dtb_mem_addr 1000000
 safe_set_env bootfromnand 0
 safe_set_env upgrade_step 2 0
-safe_set_env usbdtb 'if fatload usb 0 ${dtb_mem_addr} dtb.img; then else store dtb read $dtb_mem_addr; fi'
+safe_set_env usbdtb 'if fatload usb 0 ${dtb_mem_addr} dtb.img; then else store dtb read ${dtb_mem_addr}; fi'
 safe_set_env bootfromusb 'usb start 0; if fatload usb 0 ${loadaddr} kernel.img; then run usbdtb; setenv bootargs ${bootargs} bootfromusb; bootm; fi'
-safe_set_env bootcmd 'if test ${bootfromnand} = 1; then setenv bootfromnand 0; saveenv; else run bootfromusb; fi; run storeboot' 'run boot_from_flash'
+safe_set_env bootcmd 'if itest ${bootfromnand} == 1; then setenv bootfromnand 0; saveenv; else run bootfromusb; fi; run storeboot' 'run boot_from_flash'
 
 echo "Enabled USB booting"
