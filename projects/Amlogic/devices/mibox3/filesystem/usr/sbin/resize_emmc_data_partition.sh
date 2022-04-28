@@ -11,7 +11,7 @@ EMMC_SIZE=$($CAT /sys/block/mmcblk0/size)
 
 DATA_SIZE=$($CAT /sys/block/mmcblk0/data/size)
 [[ $? != 0 ]] && echo "ERROR: Can not get size of data partition, check if you are running 7Ji's patched kernel." && exit 1
-[[ "$DATA_SIZE" != 3825664 ]] && echo "ERROR: Size of data partition is not 1868 MiB, you may already resized the partition, refuse to continue" && exit 1
+#[[ "$DATA_SIZE" != 3825664 ]] && echo "ERROR: Size of data partition is not 1868 MiB, you may already resized the partition, refuse to continue" && exit 1
 
 MOUNT='/usr/bin/mount'
 GREP='/usr/bin/grep'
