@@ -1,5 +1,5 @@
 defenv
-setenv storeboot 'run storeargs; ${bootcmd}'
+setenv storeboot "run storeargs; ${bootcmd}"
 setenv dtb_mem_addr 1000000
 setenv bootfromnand 0
 setenv upgrade_step 2
