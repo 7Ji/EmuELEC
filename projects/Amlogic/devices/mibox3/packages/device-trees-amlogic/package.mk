@@ -4,8 +4,8 @@
 # Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 PKG_NAME="device-trees-amlogic"
-PKG_VERSION="fcf78f8e6f20b7a42b89641099389ad0337d0bf4"
-PKG_SHA256="edcf668e52c44d0eae49ce67a1adabcd25f5b94f3c0e4d1ed1c806769d04961e"
+PKG_VERSION="36e410f1f3d15ba7c67676719f84e7fc2a0679c5"
+PKG_SHA256="543c1bb5ac2132ca6a039ce7a1eec2711affd2fe5c27e5fa820acca1f627f1c1"
 PKG_LICENSE="GPL"
 PKG_SITE="https://github.com/7Ji/device-trees-amlogic"
 PKG_URL="https://github.com/7Ji/device-trees-amlogic/archive/$PKG_VERSION.tar.gz"
