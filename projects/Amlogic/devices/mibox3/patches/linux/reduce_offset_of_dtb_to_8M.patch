@@ -1,0 +1,25 @@
+From 8a715149bb4eea1f6221d448c4e124fbc035799b Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Sat, 30 Apr 2022 17:41:59 +0800
+Subject: [PATCH] Adjust dtb offset
+
+---
+ drivers/amlogic/mmc/amlmmc_dtb.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/amlogic/mmc/amlmmc_dtb.c b/drivers/amlogic/mmc/amlmmc_dtb.c
+index 28611b1937d..7efa5269044 100644
+--- a/drivers/amlogic/mmc/amlmmc_dtb.c
++++ b/drivers/amlogic/mmc/amlmmc_dtb.c
+@@ -32,7 +32,7 @@
+  * |<------DTB1------->|<------DTB2------>|
+  */
+ 
+-#define	DTB_GLB_OFFSET		(40*SZ_1M)
++#define	DTB_GLB_OFFSET		(8*SZ_1M)
+ #define	DTB_BLK_SIZE		(0x200)
+ #define	DTB_BLK_CNT			(512)
+ #define	DTB_SIZE			(DTB_BLK_CNT * DTB_BLK_SIZE)
+-- 
+2.36.0
+
