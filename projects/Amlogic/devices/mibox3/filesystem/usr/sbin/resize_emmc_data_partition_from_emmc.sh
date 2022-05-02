@@ -23,6 +23,8 @@ read -p 'WARNING: Resizing the data partition is only reasonable if you have mod
 
 SYSTEMCTL='/usr/bin/systemctl'
 MOUNT='/usr/bin/mount'
+E2FSCK='/usr/sbin/e2fsck'
+RESIZE2FS='/usr/sbin/resize2fs'
 echo 'Stopping kodi so we can remount data as read-only...'
 $SYSTEMCTL stop kodi
 $MOUNT -o ro,remount /dev/data /storage
@@ -31,5 +33,5 @@ $E2FSCK -f "/dev/data"
 echo 'Mounting data as read-write again'
 $MOUNT -o rw,remount /dev/data /storage
 echo 'Resizing filesystem, losing power during the following step will be fatal.'
-$RESIZE2fs "/dev/data"
+$RESIZE2FS "/dev/data"
 echo "Resize complete"

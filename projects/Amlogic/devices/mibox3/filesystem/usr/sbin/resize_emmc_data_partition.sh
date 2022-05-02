@@ -24,7 +24,7 @@ DEV_LOOP='/dev/loop7'
 DEV_EMMC='/dev/mmcblk0'
 LOSETUP='/usr/sbin/losetup'
 E2FSCK='/usr/sbin/e2fsck'
-RESIZE2fs='/usr/sbin/resize2fs'
+RESIZE2FS='/usr/sbin/resize2fs'
 
 attach() {
     $LOSETUP -o "${1}M" "$DEV_LOOP" "$DEV_EMMC"
@@ -38,7 +38,7 @@ safe_exit() {
 }
 attach 1908 || safe_exit 1
 $E2FSCK -f "$DEV_LOOP"
-$RESIZE2fs "$DEV_LOOP"
+$RESIZE2FS "$DEV_LOOP"
 detach 0
 
 echo "Resize complete, you may try to reboot to emmc know."
