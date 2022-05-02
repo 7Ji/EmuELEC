@@ -25,11 +25,11 @@ SYSTEMCTL='/usr/bin/systemctl'
 MOUNT='/usr/bin/mount'
 echo 'Stopping kodi so we can remount data as read-only...'
 $SYSTEMCTL stop kodi
-$MOUNT -o ro,remount /dev/data /dev/storage
+$MOUNT -o ro,remount /dev/data /storage
 echo 'Checking filesystem, losing power during the following step will be fatal.'
-$E2FSCK -f "$DEV_LOOP"
+$E2FSCK -f "/dev/data"
 echo 'Mounting data as read-write again'
-$MOUNT -o rw,remount /dev/data /dev/storage
+$MOUNT -o rw,remount /dev/data /storage
 echo 'Resizing filesystem, losing power during the following step will be fatal.'
-$RESIZE2fs "$DEV_LOOP"
+$RESIZE2fs "/dev/data"
 echo "Resize complete"
