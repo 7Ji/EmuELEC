@@ -25,13 +25,14 @@ SYSTEMCTL='/usr/bin/systemctl'
 MOUNT='/usr/bin/mount'
 E2FSCK='/usr/sbin/e2fsck'
 RESIZE2FS='/usr/sbin/resize2fs'
+DATA='/dev/data'
 echo 'Stopping kodi so we can remount data as read-only...'
 $SYSTEMCTL stop kodi
-$MOUNT -o ro,remount /dev/data /storage
+$MOUNT -o ro,remount $DATA /storage
 echo 'Checking filesystem, losing power during the following step will be fatal.'
-$E2FSCK -f "/dev/data"
+$E2FSCK -f $DATA
 echo 'Mounting data as read-write again'
-$MOUNT -o rw,remount /dev/data /storage
+$MOUNT -o rw,remount $DATA /storage
 echo 'Resizing filesystem, losing power during the following step will be fatal.'
-$RESIZE2FS "/dev/data"
+$RESIZE2FS $DATA
 echo "Resize complete"
