@@ -528,30 +528,30 @@
 					};
 	};*/
 	partitions: partitions{
-		parts = <3>;
+		parts = <5>;
 		part-0 = <&boot>;
-		part-1 = <&eboot>
-		part-1 = <&system>;
-		part-2 = <&esystem>
-		part-2 = <&data>;
+		part-1 = <&boot_emuelec>;
+		part-2 = <&system>;
+		part-3 = <&system_emuelec>;
+		part-4 = <&data>;
 		boot:boot{
 			pname = "boot";
 			size = <0x0 0xb6c000>;
 			mask = <1>;
 		};
-		eboot:eboot{
-			pname = "eboot";
+		boot_emuelec:boot_emuelec{
+			pname = "boot_emuelec";
 			size = <0x0 0xc47000>;
 			mask = <1>;
 		};
 		system:system{
 			pname = "system";
-			size = <0x0 0x9d2d000>;
+			size = <0x0 0x9d2c000>;
 			mask = <1>;
 		};
-		esystem:esystem{
-			pname = "esystem";
-			size = <0x0 0x814413824>;
+		system_emuelec:system_emuelec{
+			pname = "system_emuelec";
+			size = <0x0 0x308af000>;
 			mask = <1>;
 		};
 		data:data
