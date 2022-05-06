@@ -1,0 +1,536 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2010-2011 Roman Weber (roman@openelec.tv)
+# Copyright (C) 2012 Yann Cézard (eesprit@free.fr)
+# Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
+# Copyright (C) 2016-2018 Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+
+# create directories
+/usr/bin/busybox mkdir -p /dev
+/usr/bin/busybox mkdir -p /proc
+/usr/bin/busybox mkdir -p /sys
+/usr/bin/busybox mkdir -p /tmp
+/usr/bin/busybox mkdir -p /flash
+/usr/bin/busybox mkdir -p /sysroot
+/usr/bin/busybox mkdir -p /data
+/usr/bin/busybox mkdir -p /storage
+
+# mount all needed special filesystems
+/usr/bin/busybox mount -t devtmpfs devtmpfs /dev
+/usr/bin/busybox mount -t proc proc /proc
+/usr/bin/busybox mount -t sysfs sysfs /sys
+
+# set needed variables
+MODULE_DIR=/usr/lib/modules
+
+BOOT_STEP="start"
+MD5_FAILED="0"
+RUN_FSCK="yes"
+RUN_FSCK_DISKS=""
+SYSLINUX_DEFAULT=""
+GRUB_DEFAULT=""
+
+NBD_DEVS="0"
+FLASH_FREE_MIN="5"
+
+LIVE="no"
+
+BREAK_TRIPPED="no"
+
+BIGFONT="1080"
+
+TEE_PID=""
+
+# Get a serial number if present (eg. RPi) otherwise use MAC address from eth0
+MACHINE_UID="$(awk '/^Serial/{s='0000000' $3; print substr(s, length(s) - 7)}' /proc/cpuinfo)"
+[ -z "$MACHINE_UID" ] && MACHINE_UID="$(cat /sys/class/net/eth0/address 2>/dev/null | tr -d :)"
+
+# common functions
+. /functions
+
+# script functions
+progress() {
+  if test "$PROGRESS" = "yes"; then
+    echo "### $1 ###" >&2
+  fi
+}
+
+debug_msg() {
+  echo "$1" >&$SILENT_OUT
+}
+
+debug_shell() {
+  redirect_output_to_screen  # restore output to a screen
+  echo "### Starting debugging shell for boot step: $BOOT_STEP... type  exit  to quit ###"
+  showcursor
+  setsid cttyhack sh
+}
+
+error() {
+  # Display fatal error message
+  # $1:action which caused error, $2:message
+  # Send debug_shell output to stderr, in case caller is redirecting/consuming stdout
+  # Return exitcode=1 so that called may detect when an error has occurred
+  echo "*** Error in $BOOT_STEP: $1: $2 ***" >&2
+  debug_shell >&2
+  return 1
+}
+
+break_after() {
+  # Start debug shell after boot step $1, and all subsequent steps
+  if [ $BREAK_TRIPPED == yes ]; then
+    debug_shell
+  else
+    case $BREAK in
+      all|*$1*)
+        BREAK_TRIPPED=yes
+        debug_shell
+        ;;
+    esac
+  fi
+}
+
+# Mount handlers
+# All handlers take the following parameters:
+# $1:target, $2:mountpoint, $3:mount options, [$4:fs type]
+mount_common() {
+  # Common mount handler, handles block devices and filesystem images
+  MOUNT_OPTIONS="-o $3"
+  [ -n "$4" ] && MOUNT_OPTIONS="-t $4 $MOUNT_OPTIONS"
+
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    ERR_ENV=1
+
+    mount $MOUNT_OPTIONS $1 $2 >&$SILENT_OUT 2>&1
+    [ "$?" -eq "0" ] && ERR_ENV=0 && break
+
+    usleep 1000000
+  done
+  [ "$ERR_ENV" -eq "0" ] && return 0
+  error "mount_common" "Could not mount $1"
+}
+
+#  mount_folder "$boot" "/flash" "ro,noatime"
+# $1:[TYPE=]target, $2:mountpoint, $3:mount options, [$4:fs type]
+mount_folder() {
+  local target="${1#*=}"
+
+  mkdir -p /dev/bind_tmp
+  mount_common "$target" "/dev/bind_tmp" "rw,noatime"
+  mount_common "/dev/bind_tmp/coreelec_$(basename $2)" "$2" "bind"
+  umount /dev/bind_tmp
+
+  [ -z "$(ls -A /dev/bind_tmp)" ] && rm -rf /dev/bind_tmp
+}
+
+mount_part() {
+  # Mount a local or network filesystem
+  # $1:[TYPE=]target, $2:mountpoint, $3:mount options, [$4:fs type]
+  progress "mount filesystem $1 ..."
+
+  MOUNT_TARGET="${1#*=}"
+  case $1 in
+    FOLDER=*)
+      MOUNT_CMD="mount_folder"
+      MOUNT_TARGET="$1"
+      ;;
+    /*)
+      MOUNT_CMD="mount_common"
+      MOUNT_TARGET="$1"
+      ;;
+    *)
+      error "mount_part" "Unknown filesystem $1"
+      ;;
+  esac
+
+  # Substitute unique identifier if available or remove placeholder
+  MOUNT_TARGET="${MOUNT_TARGET//@UID@/$MACHINE_UID}"
+
+  $MOUNT_CMD "$MOUNT_TARGET" "$2" "$3" "$4"
+}
+
+mount_sysroot() {
+  mount_part "/dev/system" "/sysroot" "ro"
+}
+
+load_modules() {
+  progress "Loading kernel modules"
+
+  [ ! -f "/etc/modules" ] && return
+  for module in $(cat /etc/modules); do
+    progress "Loading kernel module $module"
+    insmod "$MODULE_DIR/$module.ko" || progress "... Failed to load kernel module $module, skipping"
+  done
+}
+
+set_consolefont() {
+  local vres
+
+  progress "Set console font"
+  if [ -e /dev/fb0 ]; then
+    vres="$(fbset 2>/dev/null | awk '/geometry/ { print $3 }')"
+    if [ $vres -gt "$BIGFONT" ]; then
+      setfont -C /dev/tty0 ter-v32b.psf
+    fi
+  fi
+}
+
+load_splash() {
+  local set_default_res=no
+  local vres
+
+  if [ ! "$SPLASH" = "no" ]; then
+    progress "Loading bootsplash"
+
+    # load uvesafb module if needed
+    if [ -f "$MODULE_DIR/uvesafb.ko" -a ! -e /dev/fb0 ]; then
+      progress "Loading kernel module uvesafb.ko"
+      insmod "$MODULE_DIR/uvesafb.ko" && set_default_res=yes || progress "... Failed to load kernel module uvesafb, skipping"
+    fi
+
+    if [ -e /dev/fb0 ]; then
+      # Set framebuffer to a custom resolution and/or fallback to default resolution (1024x768-32), if required.
+      if [ ! "$SWITCH_FRAMEBUFFER" = "no" ]; then
+        if [ "$SWITCH_FRAMEBUFFER" = "1080" ]; then
+          SWITCH_FRAMEBUFFER="1920 1080 1920 1080 32"
+        elif [ "$SWITCH_FRAMEBUFFER" = "720" ]; then
+          SWITCH_FRAMEBUFFER="1280 720 1280 720 32"
+        fi
+
+        # Try setting a custom framebuffer resolution
+        if [ ! "${SWITCH_FRAMEBUFFER:-yes}" = "yes" ]; then
+          fbset -g $SWITCH_FRAMEBUFFER 2>/dev/null && set_default_res=no
+        fi
+
+        # Set a default resolution if required
+        if [ "$set_default_res" = "yes" ]; then
+          fbset -g 1024 768 1024 768 32
+        fi
+      fi
+
+      # load splash
+      if [ -f /splash/splash.conf ]; then
+        . /splash/splash.conf
+      fi
+
+      # Select splash image based on current native resolution
+      if [ -z "$SPLASHIMAGE" ]; then
+        vres="$(fbset 2>/dev/null | awk '/geometry/ { print $3 }')"
+
+        for s in /splash/splash-${vres}.png \
+                 /splash/splash-1080.png \
+                 ; do
+          if [ -f "${s}" ]; then
+            SPLASHIMAGE="${s}"
+            break
+          fi
+        done
+      fi
+
+      if [ -n "$SPLASHIMAGE" -a -f "$SPLASHIMAGE" ]; then
+        ply-image $SPLASHIMAGE > /dev/null 2>&1
+      fi
+
+      debug_msg "Framebuffer vertical res: $vres"
+      debug_msg "Framebuffer splash image: $SPLASHIMAGE"
+    fi
+  fi
+}
+
+do_reboot() {
+  echo "System reboots now..."
+
+  # stop output redirection
+  [ -n "$TEE_PID" ] && kill $TEE_PID &>/dev/null
+  if [ -s /dev/init.log ]; then
+    mv /dev/init.log /storage/init-previous.log
+  fi
+  redirect_output_to_screen
+  delete_descriptors
+
+  # syncing filesystem
+  sync
+
+  # unmount filesystems
+  if /usr/bin/busybox mountpoint -q /flash ; then
+    /usr/bin/busybox umount /flash
+  fi
+
+  if /usr/bin/busybox mountpoint -q /storage ; then
+    /usr/bin/busybox umount /storage
+  fi
+
+  usleep 2000000
+  /usr/bin/busybox reboot
+}
+
+force_fsck() {
+  echo "Filesystem corruption has been detected!"
+  echo "To prevent an automatic repair attempt continuing,"
+  echo "press any key or power off your system within the next 120 seconds"
+  echo ""
+  read -t120 -n1
+  # The exit status is 0 if input is available
+  # The exit status is greater than 128 if the timeout is exceeded
+  if [ $? -ne 0 -o $? -gt 128 ]; then
+    echo "Repairing filesystem..."
+    echo ""
+    /usr/sbin/fsck -T -M -y $RUN_FSCK_DISKS
+    FSCK_RET=$?
+    if [ $(( $FSCK_RET & 8 )) -eq 8 ]; then
+      # fubar
+      echo "Forced fsck failed. Your system is broken beyond repair"
+      echo "Please re-install @DISTRONAME@"
+      echo ""
+      echo "Press enter to shutdown now"
+      echo ""
+      read fubar
+      poweroff
+    fi
+    do_reboot
+  else
+    echo "Shutting down..."
+    sleep 5
+    sync
+    poweroff
+  fi
+}
+
+check_disks() {
+  if [ "$RUN_FSCK" = "yes" -a -n "$RUN_FSCK_DISKS" ]; then
+    progress "Checking disk(s): $RUN_FSCK_DISKS"
+    echo "Checking disk(s): $RUN_FSCK_DISKS" >/dev/kmsg
+    for i in 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0; do
+      /usr/sbin/fsck -T -M -p -a $RUN_FSCK_DISKS >/dev/fsck.latest 2>&1
+      FSCK_RET=$?
+      cat /dev/fsck.latest >>/dev/fsck.log
+
+      # FSCK_RET is the bit-wise OR of the exit codes for each filesystem that is checked.
+      if [ $FSCK_RET -ge 16 ]; then
+        progress "General error, continuing..."
+        break
+      elif [ $(( $FSCK_RET & 8 )) -eq 8 ]; then
+        # device not found
+        if [ $i -eq 0 ]; then
+          progress "Device not found, continuing..."
+        else
+          usleep 500000
+        fi
+      elif [ $(( $FSCK_RET & 4 )) -eq 4 ]; then
+        # errors left
+        force_fsck
+      elif [ $(( $FSCK_RET & 2 )) -eq 2 ]; then
+        # reboot needed
+        echo "Filesystem repaired, reboot needed..."
+        do_reboot
+      elif [ $(( $FSCK_RET & 1 )) -eq 1 ]; then
+        # filesystem errors corrected
+        progress "Filesystem errors corrected , continuing..."
+        break
+      elif [ $FSCK_RET -eq 0 ]; then
+        # no errors found
+        progress "No filesystem errors found, continuing..."
+        break
+      fi
+    done
+    while read line; do
+      [ -n "$line" ] && echo "fsck: ${line::160}" >/dev/kmsg
+    done </dev/fsck.latest
+    rm -f /dev/fsck.latest
+  fi
+}
+
+mount_storage() {
+  progress "Mounting data"
+  mount_part "/dev/data" "/data" "rw,noatime"
+  progress "Mounting storage"
+  mount_part "FOLDER=/data/coreelec" "/storage" "rw,noatime"
+  # /storage should always be writable
+}
+
+prepare_sysroot() {
+  progress "Preparing system"
+
+  #mount --move /flash /sysroot/flash
+  mount --move /storage /sysroot/storage
+
+  if [ ! -d "/sysroot/usr/lib/kernel-overlays/base/lib/modules/$(uname -r)/" -a -f "/sysroot/usr/lib/systemd/systemd" ]; then
+    echo ""
+    echo "NEVER TOUCH boot= in syslinux.conf / cmdline.txt!"
+    echo "If you don't know what you are doing,"
+    echo "your installation is now broken."
+    echo ""
+    StartProgress countdown "Normal startup in 60s... " 60 "NOW"
+  fi
+
+  [ -f "/sysroot/usr/lib/systemd/systemd" ] || error "final_check" "Could not find systemd!"
+}
+
+# create pipe and save original descriptors
+create_output_pipe() {
+  # save original stdout and stderr descriptors
+  exec 4>&1
+  exec 5>&2
+
+  # create pipe and use it with tee
+  mknod /tmp/output_pipe p
+  tee </tmp/output_pipe /dev/init.log &
+  TEE_PID=$!
+}
+
+# redirect stdout and stderr
+redirect_output_to_pipe() {
+  exec 1>/tmp/output_pipe
+  exec 2>/tmp/output_pipe
+}
+
+# restore original descriptors
+redirect_output_to_screen() {
+  exec 1>&4
+  exec 2>&5
+}
+
+# delete descriptor
+delete_descriptors() {
+  exec 4>&-
+  exec 5>&-
+}
+
+# Do init tasks to bring up system
+
+# set ondemand up_threshold
+if [ -e /sys/devices/system/cpu/cpufreq/ondemand/up_threshold ]; then
+  echo 50 > /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
+else
+  for f in $(ls /sys/devices/system/cpu/cpufreq/policy*/ondemand/up_threshold 2>/dev/null) ; do
+    echo 50 > $f
+  done
+fi
+
+# run platform_init script if exists
+if [ -f "./platform_init" ]; then
+  ./platform_init
+fi
+
+# clear screen and hide cursor
+clear
+hidecursor
+
+create_output_pipe
+redirect_output_to_pipe
+
+# parse command line arguments
+for arg in $(cat /proc/cmdline); do
+  case $arg in
+    textmode)
+      INIT_UNIT="--unit=textmode.target"
+      ;;
+    debugging)
+      DEBUG=yes
+      ;;
+    nopkmute)
+      MUTE_PRINTK=no
+      ;;
+    progress)
+      PROGRESS=yes
+      INIT_ARGS="$INIT_ARGS --show-status=1"
+      ;;
+    nofsck)
+      RUN_FSCK=no
+      ;;
+    nosplash)
+      SPLASH=no
+      ;;
+    overlay)
+      OVERLAY=yes
+      ;;
+    setfbres=*)
+      SWITCH_FRAMEBUFFER="${arg#*=}"
+      SWITCH_FRAMEBUFFER="${SWITCH_FRAMEBUFFER//,/ }"
+      ;;
+    break=*)
+      BREAK="${arg#*=}"
+      ;;
+    bigfont=*)
+      BIGFONT="${arg#*=}"
+      ;;
+    ip=*)
+      KERNEL_IPCONFIG="yes"
+      ;;
+  esac
+done
+
+# hide kernel log messages on console
+if [ ! "$MUTE_PRINTK" = "no" ]; then
+  echo '1 4 1 7' > /proc/sys/kernel/printk
+fi
+
+if test "$DEBUG" = "yes"; then
+  exec 3>&1
+else
+  exec 3>/dev/null
+fi
+SILENT_OUT=3
+
+# If the network is up (due to the use of the "ip" kernel parameter) and a DNS
+# server is known, allow the libc resolver to use it
+grep '^\(nameserver\|domain\) ' /proc/net/pnp | grep -v '^nameserver 0\.0\.0\.0$' > /etc/resolv.conf
+
+if [ "${boot%%=*}" = "FILE" ]; then
+  error "check arguments" "boot argument can't be FILE type..."
+fi
+
+debug_msg "Unique identifier for this client: ${MACHINE_UID:-NOT AVAILABLE}"
+
+# main boot sequence
+for BOOT_STEP in \
+    load_modules \
+    set_consolefont \
+    check_disks \
+    load_splash \
+    mount_sysroot \
+    mount_storage 
+    prepare_sysroot; do
+  $BOOT_STEP
+  [ -n "$DEBUG" ] && break_after $BOOT_STEP
+done
+
+BOOT_STEP=final
+
+# move some special filesystems
+/usr/bin/busybox mount --move /dev /sysroot/dev
+/usr/bin/busybox mount --move /proc /sysroot/proc
+/usr/bin/busybox mount --move /sys /sysroot/sys
+/usr/bin/busybox rm -fr /tmp
+
+if [ "$KERNEL_IPCONFIG" = "yes" ]; then
+  echo "" > /sysroot/dev/.kernel_ipconfig
+fi
+
+BACKUP_FILE=$(ls -1 /sysroot/storage/.restore/??????????????.tar 2>/dev/null | head -n 1)
+
+if [ -f /sysroot/storage/.cache/reset_oe -o -f /sysroot/storage/.cache/reset_xbmc ]; then
+  INIT_UNIT="--unit=factory-reset.target"
+elif [ -f "$BACKUP_FILE" ]; then
+  INIT_UNIT="--unit=backup-restore.target"
+fi
+
+# stop output redirection
+[ -n "$TEE_PID" ] && kill $TEE_PID &>/dev/null
+if [ -s /sysroot/dev/init.log ]; then
+  mv /sysroot/dev/init.log /sysroot/storage/init.log
+else
+  rm -f /sysroot/dev/init.log
+  rm -f /sysroot/storage/init.log
+fi
+
+# restore original descriptors and delete descriptors
+redirect_output_to_screen
+delete_descriptors
+
+# switch to new sysroot and start real init
+exec /usr/bin/busybox switch_root /sysroot /usr/lib/systemd/systemd $INIT_ARGS $INIT_UNIT
+
+error "switch_root" "Error in initramfs. Could not switch to new root"
