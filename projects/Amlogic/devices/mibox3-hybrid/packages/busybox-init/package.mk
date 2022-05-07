@@ -11,7 +11,7 @@ PKG_DEPENDS_INIT="busybox"
 PKG_LONGDESC="Custom init for mibox3 CoreELEC/EmuELEC hybrid booting"
 PKG_TOOLCHAIN="manual"
 
-makeinstall_target() {
+makeinstall_init() {
   cp $PKG_DIR/init $INSTALL
   chmod 755 $INSTALL/init
 }
