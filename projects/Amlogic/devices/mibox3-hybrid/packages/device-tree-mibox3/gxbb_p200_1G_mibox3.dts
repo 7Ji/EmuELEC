@@ -26,7 +26,7 @@
 		};
 		system:system{
 			pname = "system";
-			size = <0x0 0x9d2d000>;
+			size = <0x0 0x9d2e000>;
 			mask = <1>;
 		};
 		system_emuelec:system_emuelec{
