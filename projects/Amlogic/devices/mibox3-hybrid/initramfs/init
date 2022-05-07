@@ -5,7 +5,7 @@
 # Copyright (C) 2012 Yann Cézard (eesprit@free.fr)
 # Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
 # Copyright (C) 2016-2018 Team LibreELEC (https://libreelec.tv)
-# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2018-2022 Team CoreELEC (https://coreelec.org)
 # Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 # create directories
@@ -13,10 +13,12 @@
 /usr/bin/busybox mkdir -p /proc
 /usr/bin/busybox mkdir -p /sys
 /usr/bin/busybox mkdir -p /tmp
-/usr/bin/busybox mkdir -p /flash
 /usr/bin/busybox mkdir -p /sysroot
 /usr/bin/busybox mkdir -p /data
 /usr/bin/busybox mkdir -p /storage
+
+# temp mountpoint for updates
+/usr/bin/busybox mkdir -p /update
 
 # mount all needed special filesystems
 /usr/bin/busybox mount -t devtmpfs devtmpfs /dev
@@ -30,8 +32,6 @@ BOOT_STEP="start"
 MD5_FAILED="0"
 RUN_FSCK="yes"
 RUN_FSCK_DISKS=""
-SYSLINUX_DEFAULT=""
-GRUB_DEFAULT=""
 
 NBD_DEVS="0"
 FLASH_FREE_MIN="5"
@@ -93,8 +93,33 @@ break_after() {
   fi
 }
 
+# Mount handlers
+# All handlers take the following parameters:
+# $1:target, $2:mountpoint, $3:mount options, [$4:fs type]
+mount_common() {
+  # Common mount handler, handles block devices and filesystem images
+  MOUNT_OPTIONS="-o $3"
+  [ -n "$4" ] && MOUNT_OPTIONS="-t $4 $MOUNT_OPTIONS"
+
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    ERR_ENV=1
+
+    mount $MOUNT_OPTIONS $1 $2 >&$SILENT_OUT 2>&1
+    [ "$?" -eq "0" ] && ERR_ENV=0 && break
+
+    usleep 1000000
+  done
+  [ "$ERR_ENV" -eq "0" ] && return 0
+  error "mount_common" "Could not mount $1"
+}
+
 mount_sysroot() {
-  mount -o ro /dev/system /sysroot
+  if [ "$SYSTEM_TORAM" = "yes" ]; then
+    dd if=/dev/system of=/dev/SYSTEM
+    mount_common '/dev/SYSTEM' "/sysroot" "ro,loop"
+  else
+    mount_common '/dev/system' "/sysroot" "ro,loop"
+  fi
 }
 
 load_modules() {
@@ -181,62 +206,6 @@ load_splash() {
   fi
 }
 
-do_reboot() {
-  echo "System reboots now..."
-
-  # stop output redirection
-  [ -n "$TEE_PID" ] && kill $TEE_PID &>/dev/null
-  if [ -s /dev/init.log ]; then
-    mv /dev/init.log /storage/init-previous.log
-  fi
-  redirect_output_to_screen
-  delete_descriptors
-
-  # syncing filesystem
-  sync
-
-  # unmount filesystems
-  if /usr/bin/busybox mountpoint -q /storage ; then
-    /usr/bin/busybox umount /storage
-    /usr/bin/busybox umount /data
-  fi
-
-  usleep 2000000
-  /usr/bin/busybox reboot
-}
-
-force_fsck() {
-  echo "Filesystem corruption has been detected!"
-  echo "To prevent an automatic repair attempt continuing,"
-  echo "press any key or power off your system within the next 120 seconds"
-  echo ""
-  read -t120 -n1
-  # The exit status is 0 if input is available
-  # The exit status is greater than 128 if the timeout is exceeded
-  if [ $? -ne 0 -o $? -gt 128 ]; then
-    echo "Repairing filesystem..."
-    echo ""
-    /usr/sbin/fsck -T -M -y $RUN_FSCK_DISKS
-    FSCK_RET=$?
-    if [ $(( $FSCK_RET & 8 )) -eq 8 ]; then
-      # fubar
-      echo "Forced fsck failed. Your system is broken beyond repair"
-      echo "Please re-install @DISTRONAME@"
-      echo ""
-      echo "Press enter to shutdown now"
-      echo ""
-      read fubar
-      poweroff
-    fi
-    do_reboot
-  else
-    echo "Shutting down..."
-    sleep 5
-    sync
-    poweroff
-  fi
-}
-
 check_disks() {
   if [ "$RUN_FSCK" = "yes" -a -n "$RUN_FSCK_DISKS" ]; then
     progress "Checking disk(s): $RUN_FSCK_DISKS"
@@ -282,11 +251,15 @@ check_disks() {
 }
 
 mount_storage() {
-  progress "Mounting data"
-  mount -o rw,noatime /dev/data /data
   progress "Mounting storage"
-  mount -o bind /data/coreelec /storage
-  # /storage should always be writable
+
+  if [ "$LIVE" = "yes" ]; then
+    # mount tmpfs and exit early. disk=xx is not allowed in live mode
+    mount -t tmpfs none /storage
+    return
+  fi
+  mount_common "/dev/data" "/data" "rw,noatime"
+  mount_common "/data/coreelec" "/storage" "bind"
 }
 
 prepare_sysroot() {
@@ -366,6 +339,9 @@ for arg in $(cat /proc/cmdline); do
     textmode)
       INIT_UNIT="--unit=textmode.target"
       ;;
+    installer)
+      INIT_UNIT="--unit=installer.target"
+      ;;
     debugging)
       DEBUG=yes
       ;;
@@ -382,8 +358,11 @@ for arg in $(cat /proc/cmdline); do
     nosplash)
       SPLASH=no
       ;;
-    overlay)
-      OVERLAY=yes
+    toram)
+      SYSTEM_TORAM=yes
+      ;;
+    live)
+      LIVE=yes
       ;;
     setfbres=*)
       SWITCH_FRAMEBUFFER="${arg#*=}"
@@ -400,7 +379,7 @@ for arg in $(cat /proc/cmdline); do
       ;;
   esac
 done
-
+RUN_FSCK_DISKS='/dev/system /dev/data'
 # hide kernel log messages on console
 if [ ! "$MUTE_PRINTK" = "no" ]; then
   echo '1 4 1 7' > /proc/sys/kernel/printk
@@ -413,14 +392,6 @@ else
 fi
 SILENT_OUT=3
 
-# If the network is up (due to the use of the "ip" kernel parameter) and a DNS
-# server is known, allow the libc resolver to use it
-grep '^\(nameserver\|domain\) ' /proc/net/pnp | grep -v '^nameserver 0\.0\.0\.0$' > /etc/resolv.conf
-
-if [ "${boot%%=*}" = "FILE" ]; then
-  error "check arguments" "boot argument can't be FILE type..."
-fi
-
 debug_msg "Unique identifier for this client: ${MACHINE_UID:-NOT AVAILABLE}"
 
 # main boot sequence
@@ -430,7 +401,7 @@ for BOOT_STEP in \
     check_disks \
     load_splash \
     mount_sysroot \
-    mount_storage 
+    mount_storage \
     prepare_sysroot; do
   $BOOT_STEP
   [ -n "$DEBUG" ] && break_after $BOOT_STEP
@@ -443,10 +414,6 @@ BOOT_STEP=final
 /usr/bin/busybox mount --move /proc /sysroot/proc
 /usr/bin/busybox mount --move /sys /sysroot/sys
 /usr/bin/busybox rm -fr /tmp
-
-if [ "$KERNEL_IPCONFIG" = "yes" ]; then
-  echo "" > /sysroot/dev/.kernel_ipconfig
-fi
 
 BACKUP_FILE=$(ls -1 /sysroot/storage/.restore/??????????????.tar 2>/dev/null | head -n 1)
 
