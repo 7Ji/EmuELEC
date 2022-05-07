@@ -546,12 +546,12 @@
 		};
 		system:system{
 			pname = "system";
-			size = <0x0 0x9d2c000>;
+			size = <0x0 0x9d2d000>;
 			mask = <1>;
 		};
 		system_emuelec:system_emuelec{
 			pname = "system_emuelec";
-			size = <0x0 0x308af000>;
+			size = <0x0 0x308b0000>;
 			mask = <1>;
 		};
 		data:data
