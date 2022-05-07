@@ -7,6 +7,7 @@ PKG_LICENSE="GPL"
 PKG_SITE="https://7ji.github.io"
 PKG_URL=""
 PKG_DEPENDS_TARGET="busybox"
+PKG_DEPENDS_INIT="busybox"
 PKG_LONGDESC="Custom init for mibox3 CoreELEC/EmuELEC hybrid booting"
 PKG_TOOLCHAIN="manual"
 
