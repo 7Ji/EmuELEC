@@ -18,6 +18,6 @@ make_host() {
 makeinstall_host() {
   $STRIP $PKG_BUILD/img2simg
 
-  mkdir -p $TOOLCHAIN/sbin
-  cp $PKG_BUILD/img2simg $TOOLCHAIN/sbin
+  mkdir -p $TOOLCHAIN/bin
+  cp $PKG_BUILD/img2simg $TOOLCHAIN/bin
 }

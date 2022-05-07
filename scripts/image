@@ -253,6 +253,10 @@ fi
 echo "rm -rf \"${TARGET_IMG}/${IMAGE_NAME}.system\"" >> ${FAKEROOT_SCRIPT}
 echo "${TOOLCHAIN}/bin/mksquashfs \"${BUILD}/image/system\" \"${TARGET_IMG}/${IMAGE_NAME}.system\" -noappend -comp ${SQUASHFS_COMPRESSION:-gzip} ${SQUASHFS_COMPRESSION_OPTION}" >> ${FAKEROOT_SCRIPT}
 
+if [ "${DEVICE}" = "mibox3-extreme" -o "${DEVICE}" = "mibox3-hybrid" ]; then
+  echo "${TOOLCHAIN}/bin/img2simg \"${TARGET_IMG}/${IMAGE_NAME}.system\" \"${TARGET_IMG}/${IMAGE_NAME}.system.PARTITION\""
+fi
+
 # Run fakeroot
 ${TOOLCHAIN}/bin/fakeroot -- ${FAKEROOT_SCRIPT}
 rm -rf ${FAKEROOT_SCRIPT}

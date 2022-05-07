@@ -4,7 +4,7 @@
  # additional packages to install:
   # Space separated list is supported,
   # e.g. ADDITIONAL_PACKAGES="PACKAGE1 PACKAGE2"
-    ADDITIONAL_PACKAGES="${ADDITIONAL_PACKAGES} busybox-init:init"
+    ADDITIONAL_PACKAGES="${ADDITIONAL_PACKAGES} busybox-init:init android-simg2img:host" 
 
   # Additional kernel dependencies
     KERNEL_EXTRA_DEPENDS_TARGET="device-tree-mibox3"
