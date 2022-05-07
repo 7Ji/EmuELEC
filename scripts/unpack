@@ -39,7 +39,14 @@ for i in ${BUILD}/${PKG_NAME}-*; do
       [ -z "${PKG_DEEPHASH}" ] && PKG_DEEPHASH=$(calculate_stamp)
       if [ ! "${PKG_DEEPHASH}" = "${STAMP_PKG_DEEPHASH}" ] ; then
         ${SCRIPTS}/clean "${PKG_NAME}"
-        [ "${PKG_NAME}" = "linux" -a "${KERNEL_EXTRA_DEPENDS_TARGET}" = "device-trees-amlogic" ] && ${SCRIPTS}/clean "device-trees-amlogic"
+        if [ "${PKG_NAME}" = "linux" ]; then
+          for KERNEL_EXTRA_DEPEND_TARGET in ${KERNEL_EXTRA_DEPENDS_TARGET}; do
+            if [ "${KERNEL_EXTRA_DEPENDS_TARGET}" = "device-trees-amlogic" -o "${KERNEL_EXTRA_DEPENDS_TARGET}" = "device-tree-mibox3" ]; then
+              ${SCRIPTS}/clean ${KERNEL_EXTRA_DEPEND_TARGET}
+            fi
+          done
+          [ "${PKG_NAME}" = "linux" -a "${KERNEL_EXTRA_DEPENDS_TARGET}" = "device-trees-amlogic" ] && ${SCRIPTS}/clean "device-trees-amlogic"
+        fi
       fi
     fi
   fi

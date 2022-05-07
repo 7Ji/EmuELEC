@@ -3,7 +3,7 @@
 ################################################################################
 
   # No kernel extra targets to build
-    KERNEL_UBOOT_EXTRA_TARGET=""
+    KERNEL_UBOOT_EXTRA_TARGET="device-tree-mibox3"
 
   # No legacy dtb image name
     LEGACY_DTB_NAME="gxbb_p200_1G_mibox3.dts"

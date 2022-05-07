@@ -1,17 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0
-# Copyright (C) 2016-2018 Team LibreELEC (https://libreelec.tv)
-# Copyright (C) 2018-2022 Team CoreELEC (https://coreelec.org)
 # Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
-PKG_NAME="device-trees-amlogic"
-PKG_VERSION="36e410f1f3d15ba7c67676719f84e7fc2a0679c5"
-PKG_SHA256="543c1bb5ac2132ca6a039ce7a1eec2711affd2fe5c27e5fa820acca1f627f1c1"
+PKG_NAME="device-tree-mibox3"
+PKG_VERSION="1.0"
 PKG_LICENSE="GPL"
 PKG_SITE="https://github.com/7Ji/device-trees-amlogic"
-PKG_URL="https://github.com/7Ji/device-trees-amlogic/archive/$PKG_VERSION.tar.gz"
+PKG_URL=""
 PKG_DEPENDS_TARGET="toolchain"
 PKG_DEPENDS_UNPACK="linux"
-PKG_LONGDESC="Device trees for Amlogic devices."
+PKG_LONGDESC="Device tree for Xiaomi mibox3"
 PKG_IS_KERNEL_PKG="yes"
 PKG_TOOLCHAIN="manual"
 
@@ -20,7 +17,7 @@ make_target() {
   pushd $BUILD/linux-$(kernel_version) > /dev/null
 
   DTB_NAME="gxbb_p200_1G_mibox3"
-  cp -f $PKG_BUILD/$DTB_NAME.dts arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/
+  cp -f $PKG_DIR/$DTB_NAME.dtsi $PKG_DIR/$DTB_NAME.dts arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/
 
   # Compile device trees
   kernel_make ${DTB_NAME}.dtb
