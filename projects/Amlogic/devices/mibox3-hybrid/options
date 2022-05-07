@@ -1,12 +1,1 @@
-################################################################################
-# Device defaults
-################################################################################
-
-  # Extrac
-    KERNEL_EXTRA_DEPENDS_TARGET="${KERNEL_EXTRA_DEPENDS_TARGET} busybox-init-hybrid"
-
-  # No kernel extra targets to build
-    KERNEL_UBOOT_EXTRA_TARGET=""
-
-  # No legacy dtb image name
-    LEGACY_DTB_NAME="gxbb_p200_1G_mibox3.dts"
+../mibox3-extreme/options
