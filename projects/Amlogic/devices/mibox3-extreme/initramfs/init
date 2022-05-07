@@ -5,7 +5,8 @@
 # Copyright (C) 2012 Yann Cézard (eesprit@free.fr)
 # Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
 # Copyright (C) 2016-2018 Team LibreELEC (https://libreelec.tv)
-# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2018-2022 Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 # create directories
 /usr/bin/busybox mkdir -p /dev
@@ -27,15 +28,10 @@
 # set needed variables
 MODULE_DIR=/usr/lib/modules
 
-IMAGE_KERNEL="@KERNEL_NAME@"
-IMAGE_SYSTEM="SYSTEM"
-
 BOOT_STEP="start"
 MD5_FAILED="0"
 RUN_FSCK="yes"
 RUN_FSCK_DISKS=""
-SYSLINUX_DEFAULT=""
-GRUB_DEFAULT=""
 
 NBD_DEVS="0"
 FLASH_FREE_MIN="5"
@@ -117,279 +113,12 @@ mount_common() {
   error "mount_common" "Could not mount $1"
 }
 
-get_iscsistart_options() {
-  # Convert kernel commandline ISCSI= options to iscsistart options
-  IFS_SAVE="$IFS"
-  IFS=,
-
-  for arg in $1; do
-    val="${arg#*=}"
-    case "$arg" in
-      iscsi_initiator=*)
-        option="-i"
-        ;;
-      iscsi_target_name=*)
-        option="-t"
-        ;;
-      iscsi_target_ip=*)
-        option="-a"
-        ;;
-      iscsi_target_port=*)
-        option="-p"
-        ;;
-      iscsi_target_group=*)
-        option="-g"
-        ;;
-      iscsi_username=*)
-        option="-u"
-        ;;
-      iscsi_password=*)
-        option="-w"
-        ;;
-      iscsi_in_username=*)
-        option="-U"
-        ;;
-      iscsi_in_password=*)
-        option="-W"
-        ;;
-    esac
-    echo "$option $val"
-  done
-
-  IFS="$IFS_SAVE"
-}
-
-mount_iscsi() {
-  # Mount iSCSI target
-  ISCSI_DEV="${1##*,}"
-  ISCSI_OPTIONS="${1%,*}"
-
-  if [ ! -f "/usr/sbin/iscsistart" ]; then
-    error "iscsistart" "iSCSI support not available"
-  fi
-
-  if [ "$ISCSI_OPTIONS" = "auto" ]; then
-    progress "Network configuration based on iBFT"
-    /usr/sbin/iscsistart -N >&$SILENT_OUT 2>&1 || error "iscsistart" "Unable to configure network"
-    progress "iSCSI auto connect based on iBFT"
-    /usr/sbin/iscsistart -b >&$SILENT_OUT 2>&1 || error "iscsistart" "Unable to auto connect"
-  else
-    /usr/sbin/iscsistart $(get_iscsistart_options "$ISCSI_OPTIONS") >&$SILENT_OUT 2>&1 || error "iscsistart" "Unable to connect to ISCSI target"
-  fi
-
-  mount_common "$ISCSI_DEV" "$2" "$3" "$4"
-}
-
-mount_nbd() {
-# Mount NBD device
-  NBD_SERVER="${1%%:*}"
-  NBD_PORT="${1#*:}"
-  NBD_DEV="/dev/nbd$NBD_DEVS"
-
-  nbd-client $NBD_SERVER $NBD_PORT $NBD_DEV >&$SILENT_OUT 2>&1 || error "nbd-client" "Could not connect to NBD server $1"
-
-  mount_common "$NBD_DEV" "$2" "$3" "$4"
-
-  NBD_DEVS=$(( NBD_DEVS + 1 ))
-}
-
-mount_nfs() {
-  # Mount NFS export
-  NFS_EXPORT="${1%%,*}"
-  NFS_OPTIONS="${1#*,}"
-
-  [ "$NFS_OPTIONS" = "$1" ] && NFS_OPTIONS=
-
-  mount_common "$NFS_EXPORT" "$2" "$3,nolock,rsize=32768,wsize=32768,$NFS_OPTIONS" "nfs"
-}
-
-mount_ubifs() {
-  mount_common "$1" "$2" "$3" "ubifs"
-}
-
-#  mount_folder "$boot" "/flash" "ro,noatime"
-# $1:[TYPE=]target, $2:mountpoint, $3:mount options, [$4:fs type]
-mount_folder() {
-  local target="${1#*=}"
-
-  mkdir -p /dev/bind_tmp
-  mount_common "$target" "/dev/bind_tmp" "rw,noatime"
-  mount_common "/dev/bind_tmp/coreelec_$(basename $2)" "$2" "bind"
-  umount /dev/bind_tmp
-
-  [ "$2" = "/flash" ] && mount -o remount,ro /flash
-  [ -z "$(ls -A /dev/bind_tmp)" ] && rm -rf /dev/bind_tmp
-}
-
-mount_part() {
-  # Mount a local or network filesystem
-  # $1:[TYPE=]target, $2:mountpoint, $3:mount options, [$4:fs type]
-  progress "mount filesystem $1 ..."
-
-  MOUNT_TARGET="${1#*=}"
-  case $1 in
-    /dev/ubi*)
-      MOUNT_CMD="mount_ubifs"
-      MOUNT_TARGET="$1"
-      RUN_FSCK="no"
-      ;;
-    LABEL=*|UUID=*|/*)
-      MOUNT_CMD="mount_common"
-      MOUNT_TARGET="$1"
-      ;;
-    ISCSI=*)
-      MOUNT_CMD="mount_iscsi"
-      ;;
-    NBD=*)
-      MOUNT_CMD="mount_nbd"
-      ;;
-    NFS=*)
-      MOUNT_CMD="mount_nfs"
-      ;;
-    FOLDER=*)
-      MOUNT_CMD="mount_folder"
-      MOUNT_TARGET="$1"
-      ;;
-    *)
-      error "mount_part" "Unknown filesystem $1"
-      ;;
-  esac
-
-  # Substitute unique identifier if available or remove placeholder
-  MOUNT_TARGET="${MOUNT_TARGET//@UID@/$MACHINE_UID}"
-
-  $MOUNT_CMD "$MOUNT_TARGET" "$2" "$3" "$4"
-}
-
 mount_sysroot() {
   if [ "$SYSTEM_TORAM" = "yes" ]; then
-    dd if=$boot of=/dev/$IMAGE_SYSTEM
-    mount_part "/dev/$IMAGE_SYSTEM" "/sysroot" "ro,loop"
+    dd if=/dev/system of=/dev/SYSTEM
+    mount_common '/dev/SYSTEM' "/sysroot" "ro,loop"
   else
-    mount_part "$boot" "/sysroot" "ro"
-  fi
-}
-
-# mount the specified SYSTEM file and output arch from /etc/os-release
-get_project_arch() {
-  if [ -f ${1}/etc/os-release ]; then
-    . ${1}/etc/os-release
-    echo "${COREELEC_ARCH:-${LIBREELEC_ARCH}}"
-  fi
-}
-
-# mount the specified SYSTEM file and output version from /etc/os-release
-get_project_version() {
-  if [ -f ${1}/etc/os-release ]; then
-    . ${1}/etc/os-release
-    echo "${VERSION}"
-  fi
-}
-
-# If the project/arch of current matches the update, then it is considered compatible.
-# Otherwise, mount the update SYSTEM partition and, if canupdate.sh is available,
-# call the script to determine if the current update file can be applied on to the
-# current system - 0 means it is compatible, non-zero that it is not compatible.
-is_compatible() {
-  local result=1
-
-  if [ "${1}" = "${2}" ]; then
-    result=0
-  else
-    if [ -f /update/usr/share/bootloader/canupdate.sh ]; then
-      sh /update/usr/share/bootloader/canupdate.sh "${1}" "${2}" && result=0
-    fi
-  fi
-
-  return ${result}
-}
-
-# determine if the new SYSTEM file is compatible with the current SYSTEM file
-check_is_compatible() {
-  local update_filename="${1}"
-  local old_project_arch new_project_arch
-
-  old_project_arch="$(get_project_arch "/sysroot")" || return
-  new_project_arch="$(get_project_arch "/update")" || return
-
-  # If old or new project/arch isn't available then could be very old (pre-/etc/os-release) build - have to trust it
-  if [ -n "${old_project_arch}" -a -n "${new_project_arch}" ]; then
-    # If the old project/arch is not compatible with the new project/arch then abort...
-    if ! is_compatible "${old_project_arch}" "${new_project_arch}"; then
-      echo ""
-      echo "ERROR: $(basename "${update_filename}") is not compatible with ${old_project_arch} hardware - update cancelled."
-      echo ""
-      echo "Current system: ${old_project_arch}"
-      echo "Update  system: ${new_project_arch}"
-      echo ""
-      echo "Create $UPDATE_ROOT/.nocompat to disable compatibility checks and risk a non-booting system."
-      echo ""
-      return 1
-    fi
-  fi
-
-  return 0
-}
-
-display_versions() {
-  local old_project_version new_project_version
-
-  old_project_version="$(get_project_version "/sysroot")" || return
-  new_project_version="$(get_project_version "/update")" || return
-
-  if [ -n "${old_project_version}" -a -n "${new_project_version}" ]; then
-    echo ""
-    echo "Updating from ${old_project_version} to ${new_project_version}"
-    echo ""
-  fi
-
-  return 0
-}
-
-update_file() {
-  if [ -f "$UPDATE_DIR/$2" -a -f "$3" ]; then
-    mount -o remount,rw /flash
-
-    StartProgress percent "Updating $1... " "$3" $(stat -t "$UPDATE_DIR/$2" | awk '{print $2}')
-      # use dd here with conv=fsync so that all writes are non-buffered
-      # ensuring accurate progress - take the sync hit during the
-      # transfer, rather than when flushing file buffers after the progress
-      # meter declares the transfer already complete
-      dd if=$UPDATE_DIR/$2 of=$3 bs=1M conv=fsync 2>/dev/null
-      StopProgress
-
-    # loopback file needs writable /flash all the time
-    if [ "${disk%%=*}" != "FILE" ]; then
-      mount -o remount,ro /flash
-    fi
-    sync
-  fi
-}
-
-update_partition() {
-  local result
-
-  if [ -f "$UPDATE_DIR/$2" -a -b "$3" ]; then
-    StartProgress spinner "Updating $1... "
-      result="$(dd if="$UPDATE_DIR/$2" of="$3" 2>&1)"
-      StopProgress "done"
-    echo "${result}"
-  fi
-}
-
-update_bootloader() {
-  local result
-
-  export BOOT_ROOT="/flash"
-  export SYSTEM_ROOT="/update"
-
-  if [ -f $SYSTEM_ROOT/usr/share/bootloader/update.sh ]; then
-    echo ""
-    echo "Updating Boot Files... "
-    sh $SYSTEM_ROOT/usr/share/bootloader/update.sh
-    sync
-    echo "Boot Files Updated."
-    echo ""
+    mount_common '/dev/system' "/sysroot" "ro,loop"
   fi
 }
 
@@ -477,65 +206,6 @@ load_splash() {
   fi
 }
 
-do_reboot() {
-  echo "System reboots now..."
-
-  # stop output redirection
-  [ -n "$TEE_PID" ] && kill $TEE_PID &>/dev/null
-  if [ -s /dev/init.log ]; then
-    mv /dev/init.log /storage/init-previous.log
-  fi
-  redirect_output_to_screen
-  delete_descriptors
-
-  # syncing filesystem
-  sync
-
-  # unmount filesystems
-  if /usr/bin/busybox mountpoint -q /flash ; then
-    /usr/bin/busybox umount /flash
-  fi
-
-  if /usr/bin/busybox mountpoint -q /storage ; then
-    /usr/bin/busybox umount /storage
-  fi
-
-  usleep 2000000
-  /usr/bin/busybox reboot
-}
-
-force_fsck() {
-  echo "Filesystem corruption has been detected!"
-  echo "To prevent an automatic repair attempt continuing,"
-  echo "press any key or power off your system within the next 120 seconds"
-  echo ""
-  read -t120 -n1
-  # The exit status is 0 if input is available
-  # The exit status is greater than 128 if the timeout is exceeded
-  if [ $? -ne 0 -o $? -gt 128 ]; then
-    echo "Repairing filesystem..."
-    echo ""
-    /usr/sbin/fsck -T -M -y $RUN_FSCK_DISKS
-    FSCK_RET=$?
-    if [ $(( $FSCK_RET & 8 )) -eq 8 ]; then
-      # fubar
-      echo "Forced fsck failed. Your system is broken beyond repair"
-      echo "Please re-install @DISTRONAME@"
-      echo ""
-      echo "Press enter to shutdown now"
-      echo ""
-      read fubar
-      poweroff
-    fi
-    do_reboot
-  else
-    echo "Shutting down..."
-    sleep 5
-    sync
-    poweroff
-  fi
-}
-
 check_disks() {
   if [ "$RUN_FSCK" = "yes" -a -n "$RUN_FSCK_DISKS" ]; then
     progress "Checking disk(s): $RUN_FSCK_DISKS"
@@ -580,53 +250,6 @@ check_disks() {
   fi
 }
 
-wakeonlan() {
-  if [ "$STORAGE_NETBOOT" = "yes" ]; then
-    wol_ip=${disk%:*}
-    wol_ip=${wol_ip#*=}
-  elif [ "$FLASH_NETBOOT" = "yes" ]; then
-    wol_ip=${boot%:*}
-    wol_ip=${wol_ip#*=}
-  else
-    return 0
-  fi
-
-  if [ -n "$wol_ip" -a -n "$wol_mac" -a -n "$wol_wait" ]; then
-    progress "Sending Magic Packet (WOL) if needed"
-
-    if ! ping -q -c 2 "$wol_ip" &>/dev/null; then
-      ether-wake "$wol_mac"
-      StartProgress countdown "WOL magic packet sent to $wol_ip, waiting $wol_wait seconds... " $wol_wait "done"
-    fi
-  fi
-}
-
-mount_flash() {
-  progress "Mounting flash"
-
-  wakeonlan
-
-  mount_part "$boot" "/flash" "ro,noatime"
-
-  if [ -f /flash/post-flash.sh ]; then
-    . /flash/post-flash.sh
-  fi
-}
-
-cleanup_flash() {
-  progress "Cleaning up flash (if required)"
-
-  if [ -f /flash/pieeprom.bin -o -f /flash/pieeprom.upd -o -f /flash/vl805.bin ]; then
-    mount -o remount,rw /flash
-
-    rm -f /flash/pieeprom.bin /flash/pieeprom.upd /flash/pieeprom.sig
-    rm -f /flash/vl805.bin /flash/vl805.sig
-    rm -f /flash/recovery.bin /flash/recovery.[0-9][0-9][0-9] /flash/RECOVERY.[0-9][0-9][0-9]
-
-    mount -o remount,ro /flash
-  fi
-}
-
 mount_storage() {
   progress "Mounting storage"
 
@@ -635,123 +258,12 @@ mount_storage() {
     mount -t tmpfs none /storage
     return
   fi
-
-  wakeonlan
-
-  if [ -n "$disk" ]; then
-    if [ -n "$OVERLAY" ]; then
-      OVERLAY_DIR=$(cat /sys/class/net/eth0/address | tr -d :)
-
-      mount_part "$disk" "/storage" "rw,noatime"
-      mkdir -p /storage/$OVERLAY_DIR
-      umount /storage
-
-      # split $disk into $target,$options so we can append $OVERLAY_DIR
-      options="${disk#*,}"
-      target="${disk%%,*}"
-      if [ "$options" = "$disk" ]; then
-        disk="$target/$OVERLAY_DIR"
-      else
-        disk="$target/$OVERLAY_DIR,$options"
-      fi
-    fi
-
-    if [ -f /flash/mount-storage.sh ]; then
-      . /flash/mount-storage.sh
-    else
-      mount_part "$disk" "/storage" "rw,noatime"
-    fi
-  else
-    # /storage should always be writable
-    mount -t tmpfs none /storage
-  fi
-}
-
-# Make last bootloader label (installer, live, run etc.) as the new default
-update_bootmenu() {
-  local crnt_default
-
-  if [ -n "$SYSLINUX_DEFAULT" -a -f /flash/syslinux.cfg ]; then
-    if grep -q "^LABEL $SYSLINUX_DEFAULT\$" /flash/syslinux.cfg; then
-      crnt_default="$(awk '/^DEFAULT/ {print $2}' /flash/syslinux.cfg)"
-      if [ ! "$crnt_default" = "$SYSLINUX_DEFAULT" ]; then
-        progress "Updating /flash/syslinux.cfg [$crnt_default -> $SYSLINUX_DEFAULT]"
-
-        mount -o remount,rw /flash
-        sed -e "s/^SAY Wait for .* mode/SAY Wait for ${SYSLINUX_DEFAULT} mode/" -i /flash/syslinux.cfg
-        sed -e "s/^DEFAULT .*/DEFAULT $SYSLINUX_DEFAULT/" -i /flash/syslinux.cfg
-        rm -f /flash/EFI/BOOT/syslinux.cfg
-        mount -o remount,ro /flash
-      fi
-    fi
-  fi
-
-  if [ -n "$GRUB_DEFAULT" -a -f /flash/EFI/BOOT/grub.cfg ]; then
-    if grep -q "^menuentry \"$GRUB_DEFAULT\"" /flash/EFI/BOOT/grub.cfg; then
-      crnt_default="$(awk '/^set default/ {print substr($2,9,19)}' /flash/EFI/BOOT/grub.cfg)"
-      if [ ! "$crnt_default" = "\"$GRUB_DEFAULT\"" ]; then
-        progress "Updating /flash/EFI/BOOT/grub.cfg [$crnt_default -> \"$GRUB_DEFAULT\"]"
-
-        mount -o remount,rw /flash
-        sed -e "s/^set default=.*/set default=\"$GRUB_DEFAULT\"/" -i /flash/EFI/BOOT/grub.cfg
-        rm -f /flash/grub.cfg
-        mount -o remount,ro /flash
-      fi
-    fi
-  fi
-}
-
-check_out_of_space() {
-  if [ "$(df /storage | awk '/[0-9]%/{print $4}')" -eq "0" ]; then
-    echo ""
-    echo "The $1 is corrupt, or there is not enough"
-    echo "free space on /storage to complete the update!"
-    echo ""
-    echo "Please free up space on your /storage partition"
-    echo "by deleting unecessary files, then try again."
-    echo ""
-    return 0
-  else
-    echo ""
-    echo "The $1 is corrupt/invalid!"
-    echo ""
-    return 1
-  fi
-}
-
-do_cleanup() {
-  StartProgress spinner "Cleaning up... "
-
-  if mountpoint -q /update; then
-    umount /update
-  fi
-
-  if [ -d $UPDATE_ROOT/.tmp/mnt ]; then
-    if mountpoint -q $UPDATE_ROOT/.tmp/mnt ; then
-      # busybox umount deletes loop device automatically
-      umount $UPDATE_ROOT/.tmp/mnt
-    fi
-
-    [ -n $LOOP ] && losetup -d $LOOP &>/dev/null
-  fi
-
-  [ -f "$UPDATE_TAR" ] && rm -f "$UPDATE_TAR" &>/dev/null
-  [ -f "$UPDATE_IMG_GZ" ] && rm -f "$UPDATE_IMG_GZ" &>/dev/null
-  [ -f "$UPDATE_IMG" ] && rm -f "$UPDATE_IMG" &>/dev/null
-
-  rm -rf $UPDATE_ROOT/.tmp &>/dev/null
-  rm -rf $UPDATE_ROOT/[0-9a-zA-Z]* &>/dev/null
-  rm -f  $UPDATE_ROOT/.nocheck $UPDATE_ROOT/.nocompat &>/dev/null
-
-  sync
-
-  StopProgress "done"
+  mount_common "/dev/data" "/storage" "rw,noatime"
 }
 
 prepare_sysroot() {
   progress "Preparing system"
 
-  #mount --move /flash /sysroot/flash
   mount --move /storage /sysroot/storage
 
   if [ ! -d "/sysroot/usr/lib/kernel-overlays/base/lib/modules/$(uname -r)/" -a -f "/sysroot/usr/lib/systemd/systemd" ]; then
@@ -822,55 +334,11 @@ redirect_output_to_pipe
 # parse command line arguments
 for arg in $(cat /proc/cmdline); do
   case $arg in
-    BOOT_IMAGE=*)
-      IMAGE_KERNEL="${arg#*=}"
-      [ "${IMAGE_KERNEL:0:1}" = "/" ] && IMAGE_KERNEL="${IMAGE_KERNEL:1}"
-      ;;
-    SYSTEM_IMAGE=*)
-      IMAGE_SYSTEM="${arg#*=}"
-      [ "${IMAGE_SYSTEM:0:1}" = "/" ] && IMAGE_SYSTEM="${IMAGE_SYSTEM:1}"
-      ;;
-    boot=*)
-      boot="${arg#*=}"
-      case $boot in
-        ISCSI=*|NBD=*|NFS=*)
-          UPDATE_DISABLED=yes
-          FLASH_NETBOOT=yes
-          ;;
-        /dev/*|LABEL=*|UUID=*)
-          RUN_FSCK_DISKS="$RUN_FSCK_DISKS $boot"
-          ;;
-        FOLDER=*)
-          RUN_FSCK_DISKS="$RUN_FSCK_DISKS ${boot#*=}"
-          ;;
-      esac
-      ;;
-    disk=*)
-      disk="${arg#*=}"
-      case $disk in
-        ISCSI=*|NBD=*|NFS=*)
-          STORAGE_NETBOOT=yes
-          ;;
-        /dev/*|LABEL=*|UUID=*)
-          RUN_FSCK_DISKS="$RUN_FSCK_DISKS $disk"
-          ;;
-        FOLDER=*)
-          RUN_FSCK_DISKS="$RUN_FSCK_DISKS ${disk#*=}"
-          ;;
-      esac
-      ;;
-    wol_mac=*)
-      wol_mac="${arg#*=}"
-      ;;
-    wol_wait=*)
-      wol_wait="${arg#*=}"
-      ;;
     textmode)
       INIT_UNIT="--unit=textmode.target"
       ;;
     installer)
       INIT_UNIT="--unit=installer.target"
-      SYSLINUX_DEFAULT="installer"
       ;;
     debugging)
       DEBUG=yes
@@ -893,20 +361,6 @@ for arg in $(cat /proc/cmdline); do
       ;;
     live)
       LIVE=yes
-      SYSLINUX_DEFAULT="live"
-      ;;
-    portable)
-      SYSLINUX_DEFAULT="run"
-      ;;
-    grub_live)
-      LIVE=yes
-      GRUB_DEFAULT="Live"
-      ;;
-    grub_portable)
-      GRUB_DEFAULT="Run"
-      ;;
-    overlay)
-      OVERLAY=yes
       ;;
     setfbres=*)
       SWITCH_FRAMEBUFFER="${arg#*=}"
@@ -923,7 +377,7 @@ for arg in $(cat /proc/cmdline); do
       ;;
   esac
 done
-
+RUN_FSCK_DISKS='/dev/system /dev/data'
 # hide kernel log messages on console
 if [ ! "$MUTE_PRINTK" = "no" ]; then
   echo '1 4 1 7' > /proc/sys/kernel/printk
@@ -936,14 +390,6 @@ else
 fi
 SILENT_OUT=3
 
-# If the network is up (due to the use of the "ip" kernel parameter) and a DNS
-# server is known, allow the libc resolver to use it
-grep '^\(nameserver\|domain\) ' /proc/net/pnp | grep -v '^nameserver 0\.0\.0\.0$' > /etc/resolv.conf
-
-if [ "${boot%%=*}" = "FILE" ]; then
-  error "check arguments" "boot argument can't be FILE type..."
-fi
-
 debug_msg "Unique identifier for this client: ${MACHINE_UID:-NOT AVAILABLE}"
 
 # main boot sequence
@@ -953,7 +399,7 @@ for BOOT_STEP in \
     check_disks \
     load_splash \
     mount_sysroot \
-    mount_storage
+    mount_storage \
     prepare_sysroot; do
   $BOOT_STEP
   [ -n "$DEBUG" ] && break_after $BOOT_STEP
@@ -967,34 +413,12 @@ BOOT_STEP=final
 /usr/bin/busybox mount --move /sys /sysroot/sys
 /usr/bin/busybox rm -fr /tmp
 
-# tell OE settings addon to disable updates
-if [ "$UPDATE_DISABLED" = "yes" ]; then
-  echo "" > /sysroot/dev/.update_disabled
-fi
-
-if [ "$FLASH_NETBOOT" = "yes" ]; then
-  echo "" > /sysroot/dev/.flash_netboot
-fi
-
-if [ "$KERNEL_IPCONFIG" = "yes" ]; then
-  echo "" > /sysroot/dev/.kernel_ipconfig
-fi
-
-# swap can not be used over nfs.(see scripts/mount-swap)
-if [ "$STORAGE_NETBOOT" = "yes" ]; then
-  echo "" > /sysroot/dev/.storage_netboot
-fi
-
 BACKUP_FILE=$(ls -1 /sysroot/storage/.restore/??????????????.tar 2>/dev/null | head -n 1)
 
-if [ -f /sysroot/storage/.please_resize_me ]; then
-  INIT_UNIT="--unit=fs-resize.target"
-elif [ -f /sysroot/storage/.cache/reset_oe -o -f /sysroot/storage/.cache/reset_xbmc ]; then
+if [ -f /sysroot/storage/.cache/reset_oe -o -f /sysroot/storage/.cache/reset_xbmc ]; then
   INIT_UNIT="--unit=factory-reset.target"
 elif [ -f "$BACKUP_FILE" ]; then
   INIT_UNIT="--unit=backup-restore.target"
-elif [ -f /sysroot/storage/.rpi_flash_firmware ]; then
-  INIT_UNIT="--unit=rpi-flash-firmware.target"
 fi
 
 # stop output redirection
