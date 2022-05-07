@@ -317,16 +317,19 @@ if [ "${1}" = "release" -o "${1}" = "mkimage" -o "${1}" = "noobs" ]; then
   # Create target directory
   mkdir -p ${TARGET_IMG}
 
-  # Remove any previously created release tarballs
-  rm -rf ${TARGET_IMG}/${IMAGE_NAME}.tar
+  # Only create tar for ordinary devices
+  if [ "${DEVICE}" != "mibox3-extreme" -a "${DEVICE}" != "mibox3-hybrid" ]; then
+    # Remove any previously created release tarballs
+    rm -rf ${TARGET_IMG}/${IMAGE_NAME}.tar
 
-  # Create release tarball
-  tar cf ${TARGET_IMG}/${IMAGE_NAME}.tar -C target ${IMAGE_NAME}
+    # Create release tarball
+    tar cf ${TARGET_IMG}/${IMAGE_NAME}.tar -C target ${IMAGE_NAME}
 
-  # Create sha256 checksum of tarball
-  ( cd ${TARGET_IMG}
-    sha256sum ${IMAGE_NAME}.tar > ${IMAGE_NAME}.tar.sha256
-  )
+    # Create sha256 checksum of tarball
+    ( cd ${TARGET_IMG}
+      sha256sum ${IMAGE_NAME}.tar > ${IMAGE_NAME}.tar.sha256
+    )
+  fi
 
   # Create image files if requested
   if [[ ( "${1}" = "noobs" || "${1}" = "mkimage" ) && -n "${BOOTLOADER}" ]]; then
