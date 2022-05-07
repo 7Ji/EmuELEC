@@ -92,67 +92,8 @@ break_after() {
   fi
 }
 
-# Mount handlers
-# All handlers take the following parameters:
-# $1:target, $2:mountpoint, $3:mount options, [$4:fs type]
-mount_common() {
-  # Common mount handler, handles block devices and filesystem images
-  MOUNT_OPTIONS="-o $3"
-  [ -n "$4" ] && MOUNT_OPTIONS="-t $4 $MOUNT_OPTIONS"
-
-  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    ERR_ENV=1
-
-    mount $MOUNT_OPTIONS $1 $2 >&$SILENT_OUT 2>&1
-    [ "$?" -eq "0" ] && ERR_ENV=0 && break
-
-    usleep 1000000
-  done
-  [ "$ERR_ENV" -eq "0" ] && return 0
-  error "mount_common" "Could not mount $1"
-}
-
-#  mount_folder "$boot" "/flash" "ro,noatime"
-# $1:[TYPE=]target, $2:mountpoint, $3:mount options, [$4:fs type]
-mount_folder() {
-  local target="${1#*=}"
-
-  mkdir -p /dev/bind_tmp
-  mount_common "$target" "/dev/bind_tmp" "rw,noatime"
-  mount_common "/dev/bind_tmp/coreelec_$(basename $2)" "$2" "bind"
-  umount /dev/bind_tmp
-
-  [ -z "$(ls -A /dev/bind_tmp)" ] && rm -rf /dev/bind_tmp
-}
-
-mount_part() {
-  # Mount a local or network filesystem
-  # $1:[TYPE=]target, $2:mountpoint, $3:mount options, [$4:fs type]
-  progress "mount filesystem $1 ..."
-
-  MOUNT_TARGET="${1#*=}"
-  case $1 in
-    FOLDER=*)
-      MOUNT_CMD="mount_folder"
-      MOUNT_TARGET="$1"
-      ;;
-    /*)
-      MOUNT_CMD="mount_common"
-      MOUNT_TARGET="$1"
-      ;;
-    *)
-      error "mount_part" "Unknown filesystem $1"
-      ;;
-  esac
-
-  # Substitute unique identifier if available or remove placeholder
-  MOUNT_TARGET="${MOUNT_TARGET//@UID@/$MACHINE_UID}"
-
-  $MOUNT_CMD "$MOUNT_TARGET" "$2" "$3" "$4"
-}
-
 mount_sysroot() {
-  mount_part "/dev/system" "/sysroot" "ro"
+  mount -o ro /dev/system /sysroot
 }
 
 load_modules() {
@@ -254,12 +195,9 @@ do_reboot() {
   sync
 
   # unmount filesystems
-  if /usr/bin/busybox mountpoint -q /flash ; then
-    /usr/bin/busybox umount /flash
-  fi
-
   if /usr/bin/busybox mountpoint -q /storage ; then
     /usr/bin/busybox umount /storage
+    /usr/bin/busybox umount /data
   fi
 
   usleep 2000000
@@ -344,16 +282,16 @@ check_disks() {
 
 mount_storage() {
   progress "Mounting data"
-  mount_part "/dev/data" "/data" "rw,noatime"
+  mount -o rw,noatime /dev/data /data
   progress "Mounting storage"
-  mount_part "FOLDER=/data/coreelec" "/storage" "rw,noatime"
+  mount -o bind /data/coreelec /storage
   # /storage should always be writable
 }
 
 prepare_sysroot() {
   progress "Preparing system"
 
-  #mount --move /flash /sysroot/flash
+  mount --move /data /sysroot/data
   mount --move /storage /sysroot/storage
 
   if [ ! -d "/sysroot/usr/lib/kernel-overlays/base/lib/modules/$(uname -r)/" -a -f "/sysroot/usr/lib/systemd/systemd" ]; then
