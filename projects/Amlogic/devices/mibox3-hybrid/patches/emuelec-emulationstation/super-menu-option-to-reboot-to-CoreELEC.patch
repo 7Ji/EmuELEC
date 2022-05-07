@@ -1,0 +1,32 @@
+From ae8edb3052e3f709f94318a4bc828b091c49ddb6 Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Sat, 7 May 2022 20:35:14 +0800
+Subject: [PATCH] Add super menu option to reboot to CoreELEC
+
+---
+ es-app/src/guis/GuiMenu.cpp | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index 0a3de7f4..4ce84a95 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -4293,11 +4293,11 @@ void GuiMenu::openQuitMenu_batocera_static(Window *window, bool quickAccessMenu,
+ 		}, _("NO"), nullptr));
+ 	}, "iconControllers");
+ 	
+-	s->addEntry(_("REBOOT FROM NAND"), false, [window] {
+-		window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT FROM NAND?"), _("YES"),
++	s->addEntry(_("REBOOT TO COREELEC"), false, [window] {
++		window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO COREELEC?"), _("YES"),
+ 			[] {
+-			Scripting::fireEvent("quit", "nand");
+-			runSystemCommand("rebootfromnand", "", nullptr);
++			Scripting::fireEvent("quit", "coreelec");
++			runSystemCommand("reboot_to_coreelec.sh", "", nullptr);
+ 			runSystemCommand("sync", "", nullptr);
+ 			runSystemCommand("systemctl reboot", "", nullptr);
+ 			quitES(QuitMode::QUIT);
+-- 
+2.36.0
+

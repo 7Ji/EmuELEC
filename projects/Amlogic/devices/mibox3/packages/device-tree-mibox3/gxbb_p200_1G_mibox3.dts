@@ -1,0 +1,74 @@
+/*
+ * Amlogic Ltd. GXBaby Plaform
+ *
+ */
+
+/dts-v1/;
+
+#include "gxbb_p200_1G_mibox3.dtsi"
+/ {
+	partitions: partitions{
+		parts = <10>;
+		part-0 = <&cache>;
+		part-1 = <&logo>;
+		part-2 = <&recovery>;
+		part-3 = <&misc>;
+		part-4 = <&boot>;
+		part-5 = <&system>;
+		part-6 = <&backup>;
+		part-7 = <&persist>;
+		part-8 = <&panic>;
+		part-9 = <&data>;
+		cache:cache{
+			pname = "cache";
+			size = <0x0 0x10000000>;
+			mask = <2>;
+		};
+		logo:logo{
+			pname = "logo";
+			size = <0x0 0x400000>;
+			mask = <1>;
+		};
+		recovery:recovery{
+			pname = "recovery";
+			size = <0x0 0x2000000>;
+			mask = <1>;
+		};
+		misc:misc{
+			pname = "misc";
+			size = <0x0 0x2000000>;
+			mask = <1>;
+		};
+		boot:boot{
+			pname = "boot";
+			size = <0x0 0x1400000>;
+			mask = <1>;
+		};
+		system:system{
+			pname = "system";
+			size = <0x0 0x40000000>;
+			mask = <1>;
+		};
+		backup:backup{
+			pname = "backup";
+			size = <0x0 0x20000000>;
+			mask = <4>;
+		};
+		persist:persist{
+			pname = "persist";
+			size = <0x0 0x800000>;
+			mask = <4>;
+		};
+		panic:panic{
+			pname = "panic";
+			size = <0x0 0x400000>;
+			mask = <4>;
+		};
+		data:data
+		{
+			pname = "data";
+			size = <0xffffffff 0xffffffff>;
+			mask = <4>;
+		};
+	};
+};

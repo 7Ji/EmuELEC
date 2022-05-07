@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2009-2016 Stephan Raue (stephan@openelec.tv)
 # Copyright (C) 2016-2018 Team LibreELEC (https://libreelec.tv)
-# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2018-2022 Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 unset _CACHE_PACKAGE_LOCAL _CACHE_PACKAGE_GLOBAL _DEBUG_DEPENDS_LIST _DEBUG_PACKAGE_LIST
 
@@ -122,7 +123,12 @@ rm -rf ${STAMPS_INSTALL}
 mkdir -p ${INSTALL}
 
 # Create base layout of LibreELEC read-only file system
-for directory in etc dev proc run sys tmp usr var flash storage; do
+if [ "${DEVICE#*-}" = "hybrid" ]; then
+  DATA="data"
+else
+  DATA="flash"
+fi
+for directory in etc dev proc run sys tmp usr var ${DATA} storage; do
   mkdir -p ${INSTALL}/${directory}
 done
 
@@ -254,6 +260,12 @@ rm -rf ${FAKEROOT_SCRIPT}
 # Set permissions
 chmod 0644 ${TARGET_IMG}/${IMAGE_NAME}.system
 
+# Create sparse image
+if [ "${DEVICE}" = "mibox3-extreme" -o "${DEVICE}" = "mibox3-hybrid" ]; then
+  echo "Special config, creating sparse image..."
+  ${TOOLCHAIN}/bin/img2simg "${TARGET_IMG}/${IMAGE_NAME}.system" "${TARGET_IMG}/${IMAGE_NAME}.system.PARTITION"
+fi
+
 if [ "${1}" = "release" -o "${1}" = "mkimage" -o "${1}" = "noobs" ]; then
 
   RELEASE_DIR="target/${IMAGE_NAME}"
@@ -305,16 +317,19 @@ if [ "${1}" = "release" -o "${1}" = "mkimage" -o "${1}" = "noobs" ]; then
   # Create target directory
   mkdir -p ${TARGET_IMG}
 
-  # Remove any previously created release tarballs
-  rm -rf ${TARGET_IMG}/${IMAGE_NAME}.tar
+  # Only create tar for ordinary devices
+  if [ "${DEVICE}" != "mibox3-extreme" -a "${DEVICE}" != "mibox3-hybrid" ]; then
+    # Remove any previously created release tarballs
+    rm -rf ${TARGET_IMG}/${IMAGE_NAME}.tar
 
-  # Create release tarball
-  tar cf ${TARGET_IMG}/${IMAGE_NAME}.tar -C target ${IMAGE_NAME}
+    # Create release tarball
+    tar cf ${TARGET_IMG}/${IMAGE_NAME}.tar -C target ${IMAGE_NAME}
 
-  # Create sha256 checksum of tarball
-  ( cd ${TARGET_IMG}
-    sha256sum ${IMAGE_NAME}.tar > ${IMAGE_NAME}.tar.sha256
-  )
+    # Create sha256 checksum of tarball
+    ( cd ${TARGET_IMG}
+      sha256sum ${IMAGE_NAME}.tar > ${IMAGE_NAME}.tar.sha256
+    )
+  fi
 
   # Create image files if requested
   if [[ ( "${1}" = "noobs" || "${1}" = "mkimage" ) && -n "${BOOTLOADER}" ]]; then

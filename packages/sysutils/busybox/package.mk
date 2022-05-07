@@ -219,7 +219,12 @@ makeinstall_init() {
   fi
 
   cp $PKG_DIR/scripts/functions $INSTALL
-  cp $PKG_DIR/scripts/init $INSTALL
+  if [ "$DEVICE" = "mibox3-extreme" -o "$DEVICE" = "mibox3-hybrid" ]; then
+    find_file_path initramfs/init
+    cp $FOUND_PATH $INSTALL
+  else
+    cp $PKG_DIR/scripts/init $INSTALL
+  fi
   sed -e "s/@DISTRONAME@/$DISTRONAME/g" \
       -e "s/@KERNEL_NAME@/$KERNEL_NAME/g" \
       -i $INSTALL/init
