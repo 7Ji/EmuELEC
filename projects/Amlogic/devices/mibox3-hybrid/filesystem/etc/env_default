@@ -1,0 +1,39 @@
+baudrate 115200
+boardver 1
+boot_from_flash setenv bootargs ${bootargs} usb=${usbmode}; if imgread kernel boot ${loadaddr}; then bootm ${loadaddr}; fi;
+bootcmd run boot_from_flash
+bootdelay 1
+btmac 00:00:00:00:00:00
+cmdline_keys keyman init 0x1234; 
+cvbsmode 576cvbs
+display_bpp 24
+display_color_bg 0
+display_color_fg 0xffff
+display_color_index 24
+display_height 1080
+display_layer osd1
+display_width 1920
+factory_reset_poweroff_protect if test ${wipe_data} = failed; then run recovery_from_flash;fi; if test ${wipe_cache} = failed; then run recovery_from_flash;fi; 
+fb_addr 0x3f800000
+fb_height 1080
+fb_width 1920
+fdt_high 0x20000000
+firstboot 1
+hdmimode 1080p60hz
+init_display hdmitx hpd;osd open;osd clear;vout output ${outputmode};imgread pic logo bootup $loadaddr;bmp display $bootup_offset;bmp scale
+initargs rootfstype=ramfs init=/init console=ttyS0,115200 no_console_suspend earlyprintk=aml-uart,0xc81004c0
+loadaddr 1080000
+outputmode 1080p60hz
+preboot checkbootinfo;run upgrade_check;run cmdline_keys;setkeys;run init_display;run storeargs;run switch_bootmode;run factory_reset_poweroff_protect;
+recovery_from_flash setenv bootargs ${bootargs} usb=otg; if imgread kernel recovery ${loadaddr}; then bootm ${loadaddr}; fi
+recovery_from_udisk setenv bootargs ${bootargs} usb=otg; if fatload usb 0 ${loadaddr} aml_autoscript; then autoscr ${loadaddr}; fi;if fatload usb 0 ${loadaddr} recovery.img; then bootm ${loadaddr};fi;
+serialno 123456789ABCDEF
+storeargs setenv bootargs ${initargs} logo=${display_layer},loaded,${fb_addr},${outputmode} hdmimode=${hdmimode} cvbsmode=${cvbsmode} hdmitx=${cecconfig} androidboot.btmac=${btmac} androidboot.wifimac=${wifimac} androidboot.firstboot=${firstboot} androidboot.serialno=${serialno} ramoops.mem_address=0x20000000 ramoops.mem_size=0x100000 ramoops.record_size=0xc0000 ramoops.dump_oops=0 boardver=${boardver}; 
+switch_bootmode get_rebootmode; echo reboot_mode=${reboot_mode};setenv bootargs ${bootargs} reboot_mode=${reboot_mode};if test ${reboot_mode} = factory_reset; then run recovery_from_flash;fi;if monitor_bt_cmdline; then run recovery_from_flash; fi;if irdetect; then run recovery_from_flash; fi;
+update run recovery_from_flash;
+upgrade_check echo upgrade_step=${upgrade_step}; if itest ${upgrade_step} == 3; then run init_display; run storeargs; setenv upgrade_step 2; saveenv; run update;else if itest ${upgrade_step} == 1; then env default -a; setenv upgrade_step 2; saveenv;else if itest ${upgrade_step} == 4; then resetenv_x; setenv upgrade_step 2; saveenv;fi;fi;fi;
+upgrade_step 2
+usbmode slave
+wifimac 00:00:00:00:00:00
+wipe_cache successful
+wipe_data successful
