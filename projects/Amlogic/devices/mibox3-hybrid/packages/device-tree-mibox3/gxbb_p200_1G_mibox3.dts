@@ -31,7 +31,7 @@
 		};
 		system_emuelec:system_emuelec{
 			pname = "system_emuelec";
-			size = <0x0 0x308b0000>;
+			size = <0x0 0x30876000>;
 			mask = <1>;
 		};
 		data:data
