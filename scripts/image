@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2009-2016 Stephan Raue (stephan@openelec.tv)
 # Copyright (C) 2016-2018 Team LibreELEC (https://libreelec.tv)
-# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2018-2022 Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 unset _CACHE_PACKAGE_LOCAL _CACHE_PACKAGE_GLOBAL _DEBUG_DEPENDS_LIST _DEBUG_PACKAGE_LIST
 
@@ -122,7 +123,12 @@ rm -rf ${STAMPS_INSTALL}
 mkdir -p ${INSTALL}
 
 # Create base layout of LibreELEC read-only file system
-for directory in etc dev proc run sys tmp usr var flash storage; do
+if [ "${DEVICE#*-}" = "hybrid" ]; then
+  DATA="data"
+else
+  DATA="flash"
+fi
+for directory in etc dev proc run sys tmp usr var ${DATA} storage; do
   mkdir -p ${INSTALL}/${directory}
 done
 
