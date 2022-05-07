@@ -1,1 +1,0 @@
-../../../mibox3-extreme/packages/device-trees-amlogic/package.mk

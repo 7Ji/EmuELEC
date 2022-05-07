@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
-PKG_NAME="busybox-init-hybrid"
+PKG_NAME="busybox-init"
 PKG_VERSION="1.0"
 PKG_LICENSE="GPL"
 PKG_SITE="https://7ji.github.io"

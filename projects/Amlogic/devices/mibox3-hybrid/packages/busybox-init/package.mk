@@ -1,0 +1,1 @@
+../../../mibox3-extreme/packages/busybox-init/package.mk

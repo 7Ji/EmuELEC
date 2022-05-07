@@ -1,0 +1,1 @@
+../../../mibox3/packages/device-tree-mibox3/package.mk
