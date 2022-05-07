@@ -19,10 +19,6 @@ if [ "$INITRAMFS_PARTED_SUPPORT" = yes ]; then
   PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET parted:init"
 fi
 
-if [ "$DEVICE" = mibox3-extreme -o '$DEVICE' = mibox-hybrid ]; then
-  PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET busybox-init:init"
-fi
-
 post_install() {
   ( cd $BUILD/initramfs
     if [ "$TARGET_ARCH" = "x86_64" ]; then
