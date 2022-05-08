@@ -21,7 +21,7 @@ index d02c7d044e..96db75f13d 100644
 +						<onclick>System.ExecWait("/usr/sbin/reboot_to_emuelec.sh")</onclick>
  						<onclick>Reset()</onclick>
  						<visible>System.PathExist("/dev/system")</visible>
-+						<visible>System.PathExist("/dev/persist")</visible>
++						<visible>System.PathExist("/dev/esystem")</visible>
  					</item>
  					<item>
  						<label>Restart Kodi</label>
