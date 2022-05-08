@@ -12,7 +12,7 @@
 		part-0 = <&boot>;
 		part-1 = <&recovery>;
 		part-2 = <&system>;
-		part-3 = <&presist>;
+		part-3 = <&persist>;
 		part-4 = <&data>;
 		boot:boot{	// CoreELEC kernel
 			pname = "boot";
@@ -29,8 +29,8 @@
 			size = <0x0 0x9d2e000>;
 			mask = <1>;
 		};
-		presist:presist{	// EmuELEC system
-			pname = "presist";
+		persist:persist{	// EmuELEC system
+			pname = "persist";
 			size = <0x0 0x30876000>;
 			mask = <1>;
 		};
