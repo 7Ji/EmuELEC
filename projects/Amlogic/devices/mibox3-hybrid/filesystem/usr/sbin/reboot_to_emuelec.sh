@@ -2,7 +2,6 @@
 
 . /usr/sbin/fw_functions.sh
 
-GREP="/usr/bin/grep"
 ENV_VALUE=''
 
 # Activate dualboot if not yet
