@@ -1,1 +1,0 @@
-SUBSYSTEM=="hid", ACTION=="add", ATTR{HID_ID}="0003:00000E8F:00002517",  RUN+="/bin/sh -c 'echo 0005 2717 32B0 > /sys/bus/hid/drivers/hid-generic/new_id'"
