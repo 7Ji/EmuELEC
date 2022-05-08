@@ -22,7 +22,7 @@ make_target() {
   cp -f ${PKG_DIR}/${DTB_NAME}.dtsi ${DTB_TARGET_DIR}/
   if [ "${DEVICE}" = 'mibox3-extreme' ]; then
     cp -f ${PKG_DIR}/extreme.dts ${DTS_TARGET}
-  if [ "${DEVICE}" = 'mibox3-hybrid' ]; then
+  elif [ "${DEVICE}" = 'mibox3-hybrid' ]; then
     cp -f ${PKG_DIR}/hybrid.dts ${DTS_TARGET}
   else
     cp -f ${PKG_DIR}/generic.dts ${DTS_TARGET}
