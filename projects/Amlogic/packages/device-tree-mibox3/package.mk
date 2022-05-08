@@ -17,12 +17,20 @@ make_target() {
   pushd $BUILD/linux-$(kernel_version) > /dev/null
 
   DTB_NAME="gxbb_p200_1G_mibox3"
-  cp -f $PKG_DIR/$DTB_NAME.dtsi $PKG_DIR/$DTB_NAME.dts arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/
+  DTB_TARGET_DIR="arch/${TARGET_KERNEL_ARCH}/boot/dts/amlogic"
+  DTS_TARGET="arch/${TARGET_KERNEL_ARCH}/boot/dts/amlogic/${DTB_NAME}.dts"
+  cp -f ${PKG_DIR}/${DTB_NAME}.dtsi ${DTB_TARGET_DIR}/
+  if [ "${DEVICE}" = 'mibox3-extreme' ]; then
+    cp -f ${PKG_DIR}/extreme.dts ${DTS_TARGET}
+  if [ "${DEVICE}" = 'mibox3-hybrid' ]; then
+    cp -f ${PKG_DIR}/hybrid.dts ${DTS_TARGET}
+  else
+    cp -f ${PKG_DIR}/generic.dts ${DTS_TARGET}
+  fi
 
   # Compile device trees
   kernel_make ${DTB_NAME}.dtb
-  cp arch/$TARGET_KERNEL_ARCH/boot/dts/amlogic/${DTB_NAME}.dtb $PKG_BUILD
-
+  cp ${DTB_TARGET_DIR}/${DTB_NAME}.dtb $PKG_BUILD
   popd > /dev/null
 }
 

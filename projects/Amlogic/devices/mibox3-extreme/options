@@ -5,12 +5,3 @@
   # Space separated list is supported,
   # e.g. ADDITIONAL_PACKAGES="PACKAGE1 PACKAGE2"
     ADDITIONAL_PACKAGES="${ADDITIONAL_PACKAGES} android-simg2img:host" 
-
-  # Additional kernel dependencies
-    KERNEL_EXTRA_DEPENDS_TARGET="device-tree-mibox3"
-
-  # No kernel extra targets to build
-    KERNEL_UBOOT_EXTRA_TARGET=""
-
-  # No legacy dtb image name
-    LEGACY_DTB_NAME="gxbb_p200_1G_mibox3.dtb"
