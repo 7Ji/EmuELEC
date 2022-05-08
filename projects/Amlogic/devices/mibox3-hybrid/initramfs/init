@@ -115,10 +115,10 @@ mount_common() {
 
 mount_sysroot() {
   if [ "$SYSTEM_TORAM" = "yes" ]; then
-    dd if=/dev/system of=/dev/SYSTEM
+    dd if=/dev/esystem of=/dev/SYSTEM
     mount_common '/dev/SYSTEM' "/sysroot" "ro,loop"
   else
-    mount_common '/dev/system' "/sysroot" "ro,loop"
+    mount_common '/dev/esystem' "/sysroot" "ro,loop"
   fi
 }
 
@@ -379,7 +379,7 @@ for arg in $(cat /proc/cmdline); do
       ;;
   esac
 done
-RUN_FSCK_DISKS='/dev/system /dev/data'
+RUN_FSCK_DISKS='/dev/esystem /dev/data'
 # hide kernel log messages on console
 if [ ! "$MUTE_PRINTK" = "no" ]; then
   echo '1 4 1 7' > /proc/sys/kernel/printk
