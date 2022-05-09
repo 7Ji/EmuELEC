@@ -219,9 +219,10 @@ makeinstall_init() {
   fi
 
   cp $PKG_DIR/scripts/functions $INSTALL
-  if [ "$DEVICE" = "mibox3-extreme" -o "$DEVICE" = "mibox3-hybrid" ]; then
-    find_file_path initramfs/init
-    cp $FOUND_PATH $INSTALL
+  if [ "$PROFILE" = 'extreme' ]; then
+    cp $PKG_DIR/scripts/init-extreme $INSTALL
+  elif [ "$PROFILE" = 'hybrid' ]; then
+    cp $PKG_DIR/scripts/init-hybrid $INSTALL
   else
     cp $PKG_DIR/scripts/init $INSTALL
   fi
