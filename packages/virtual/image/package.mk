@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0
-# Copyright (C) 2019-present Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2019-2022 Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 PKG_NAME="image"
 PKG_LICENSE="GPL"
 PKG_SITE="https://libreelec.tv"
 PKG_DEPENDS_TARGET="toolchain squashfs:host dosfstools:host fakeroot:host kmod:host mtools:host populatefs:host libc gcc linux linux-drivers linux-firmware ${BOOTLOADER} busybox util-linux corefonts network misc-packages debug"
+if [ "$PROFILE" = "extreme" -o "$PROFILE" = "hybrid" ]; then
+	PKG_DEPENDS_TARGET="${PKG_DEPENDS_TARGET} android-simg2img:host"
+fi
 PKG_SECTION="virtual"
 PKG_LONGDESC="Root package used to build and create complete image"
 
