@@ -46,12 +46,8 @@
     KERNEL_TARGET="Image.lzo"
 
   # Kernel extra targets to build
-    if [ "${DEVICE%-*}" = 'mibox3' ]; then
-      KERNEL_UBOOT_EXTRA_TARGET=""
-    else
-      KERNEL_UBOOT_EXTRA_TARGET="gxbb_p200.dtb gxbb_p200_2G.dtb gxl_p212_1g.dtb gxl_p212_2g.dtb gxl_p230_2g.dtb
+    KERNEL_UBOOT_EXTRA_TARGET="gxbb_p200.dtb gxbb_p200_2G.dtb gxl_p212_1g.dtb gxl_p212_2g.dtb gxl_p230_2g.dtb
                                gxm_q200_2g.dtb gxm_q201_1g.dtb gxm_q201_2g.dtb"
-    fi
 
   # Build Android kernel image using mkbootimg
     BUILD_ANDROID_BOOTIMG="yes"
@@ -63,11 +59,7 @@
     KERNEL_MAKE_EXTRACMD=""
 
   # Additional kernel dependencies
-    if [ "${DEVICE%-*}" = 'mibox3' ]; then
-      KERNEL_EXTRA_DEPENDS_TARGET="device-tree-mibox3"
-    else
-      KERNEL_EXTRA_DEPENDS_TARGET="device-trees-amlogic"
-    fi
+    KERNEL_EXTRA_DEPENDS_TARGET="device-trees-amlogic"
 
   # Kernel to use. values can be:
   # default:  default mainline kernel
@@ -80,11 +72,7 @@
     LEGACY_KERNEL_NAME="KERNEL"
 
   # legacy dtb image name
-    if [ "${DEVICE%-*}" = 'mibox3' ]; then
-      LEGACY_DTB_NAME="gxbb_p200_1G_mibox3.dtb"
-    else
-      LEGACY_DTB_NAME="meson64_odroidc2.dtb"
-    fi
+    LEGACY_DTB_NAME="meson64_odroidc2.dtb"
 
 ################################################################################
 # setup build defaults
