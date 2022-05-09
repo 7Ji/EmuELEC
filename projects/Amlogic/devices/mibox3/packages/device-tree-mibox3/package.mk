@@ -18,11 +18,11 @@ make_target() {
 
   DTB_NAME="gxbb_p200_1G_mibox3"
   DTB_TARGET_DIR="arch/${TARGET_KERNEL_ARCH}/boot/dts/amlogic"
-  DTS_TARGET="arch/${TARGET_KERNEL_ARCH}/boot/dts/amlogic/${DTB_NAME}.dts"
+  DTS_TARGET="${DTB_TARGET_DIR}/${DTB_NAME}.dts"
   cp -f ${PKG_DIR}/${DTB_NAME}.dtsi ${DTB_TARGET_DIR}/
-  if [ "${DEVICE}" = 'mibox3-extreme' ]; then
+  if [ "${PROFILE}" = 'extreme' ]; then
     cp -f ${PKG_DIR}/extreme.dts ${DTS_TARGET}
-  elif [ "${DEVICE}" = 'mibox3-hybrid' ]; then
+  elif [ "${PROFILE}" = 'hybrid' ]; then
     cp -f ${PKG_DIR}/hybrid.dts ${DTS_TARGET}
   else
     cp -f ${PKG_DIR}/generic.dts ${DTS_TARGET}
