@@ -622,6 +622,16 @@ check_device() {
   fi
 }
 
+check_profile() {
+  local dashes="===========================" profile_err_msg
+  if [ -n "${PROFILE}" -a "${PROFILE}" != "extreme" -a "${PROFILE}" != "hybrid" ]; then
+    profile_err_msg="\n $dashes$dashes$dashes"
+    profile_err_msg="${profile_err_msg}\n ERROR: You need to set a profile or leave it empty"
+    profile_err_msg="${profile_err_msg}\n $dashes$dashes$dashes"
+    profile_err_msg="${profile_err_msg}\n\n Valid profiles: extreme, hybrid"
+  fi
+}
+
 check_arch() {
   local dashes="===========================" arch_err_msg linux_config_dir
   if [ -d "${PROJECT_DIR}/${PROJECT}/devices/${DEVICE}/linux" ]; then
@@ -651,6 +661,7 @@ check_config() {
   check_distro
   check_project
   check_device
+  check_profile
   check_arch
 }
 
