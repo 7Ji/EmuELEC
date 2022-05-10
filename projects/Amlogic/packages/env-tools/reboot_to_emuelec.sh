@@ -5,7 +5,7 @@
 ENV_VALUE=''
 
 # Activate dualboot if not yet
-env_get boot_emuelec
+env_get bootemuelec
 if [ -n "$ENV_VALUE" ]; then
     echo 'EmuELEC is already bootable, no need to enable it'
 else
@@ -13,7 +13,8 @@ else
     echo "Enabling booting EmuELEC..."
     env_get bootcmd
     $SETENV storeboot "run storeargs; $ENV_VALUE"
-    $SETENV dtb_mem_addr 1000000
+    env_get dtb_mem_addr
+    [ -z "$ENV_VALUE" ] && $SETENV dtb_mem_addr 1000000
     $SETENV bootfromnand 0
     $SETENV bootemuelec 1
     $SETENV upgrade_step 2
@@ -23,4 +24,6 @@ else
     $SETENV bootcmd 'if itest ${bootfromnand} == 1; then setenv bootfromnand 0; saveenv; else run boot_from_usb; fi; run boot_from_emmc; run storeboot'
 fi
 
-env_set boot_emuelec 1
+env_set bootemuelec 1
+
+echo "Set next boot to EmuELEC"
