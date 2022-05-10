@@ -10,7 +10,7 @@ PKG_DEPENDS_TARGET="u-boot-tools-aml"
 PKG_LONGDESC="Tools for easily edit envs, mainly for mibox3"
 PKG_TOOLCHAIN="manual"
 
-makeinstall_init() {
+makeinstall_target() {
   mkdir -p $INSTALL/etc
   # env_default is defined per device
   find_file_path env_default
