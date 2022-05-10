@@ -15,6 +15,7 @@ PKG_NEED_UNPACK="busybox"
 PKG_SHORTDESC="Emulationstation emulator frontend"
 PKG_BUILD_FLAGS="-gold"
 GET_HANDLER_SUPPORT="git"
+[ "$PROFILE" = 'hybrid' ] && PKG_PATCH_DIRS="hybrid"
 
 # themes for Emulationstation
 PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET Crystal"
