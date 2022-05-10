@@ -1,0 +1,11 @@
+defenv
+setenv storeboot "run storeargs; ${bootcmd}"
+setenv dtb_mem_addr 1000000
+setenv bootfromnand 0
+setenv upgrade_step 2
+setenv usbdtb 'if fatload usb 0 ${dtb_mem_addr} dtb.img; then else store dtb read $dtb_mem_addr; fi'
+setenv bootfromusb 'usb start 0; if fatload usb 0 ${loadaddr} kernel.img; then run usbdtb; setenv bootargs ${bootargs} bootfromusb; bootm; fi'
+setenv bootcmd 'if test ${bootfromnand} = 1; then setenv bootfromnand 0; saveenv; else run bootfromusb; fi; run storeboot'
+saveenv
+run storeargs
+run bootfromusb
