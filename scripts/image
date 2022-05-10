@@ -312,7 +312,7 @@ if [ "${1}" = "release" -o "${1}" = "mkimage" -o "${1}" = "noobs" ]; then
   mkdir -p ${TARGET_IMG}
 
   # Only create tar for ordinary devices
-  if [ "${DEVICE}" != "mibox3-extreme" -a "${DEVICE}" != "mibox3-hybrid" ]; then
+  if [ "${PROFILE}" != "extreme" -a "${PROFILE}" != "hybrid" ]; then
     # Remove any previously created release tarballs
     rm -rf ${TARGET_IMG}/${IMAGE_NAME}.tar
 
