@@ -220,9 +220,9 @@ makeinstall_init() {
 
   cp $PKG_DIR/scripts/functions $INSTALL
   if [ "$PROFILE" = 'extreme' ]; then
-    cp $PKG_DIR/scripts/init-extreme $INSTALL
+    cp $PKG_DIR/scripts/init-extreme $INSTALL/init
   elif [ "$PROFILE" = 'hybrid' ]; then
-    cp $PKG_DIR/scripts/init-hybrid $INSTALL
+    cp $PKG_DIR/scripts/init-hybrid $INSTALL/init
   else
     cp $PKG_DIR/scripts/init $INSTALL
   fi
