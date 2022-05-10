@@ -13,14 +13,16 @@ for EXECUTABLE in $PRINTENV $SETENV; do
 done
 
 env_default() {
+    echo 'Resting envs...'
     ENV_DEFAULT='/etc/env_default'
     if [ -f $ENV_DEFAULT ]; then
         ENV_EMPTY='/tmp/env_empty'
         $PRINTENV | $CUT -d '=' -f 1 > $ENV_EMPTY
         $SETENV --script $ENV_EMPTY
         $SETENV --script $ENV_DEFAULT
+        echo 'Envs reset to default'
     else
-        echo "Error: can not find find storing default envs, check if $ENV_DEFAULT exist"
+        echo "Error: can not find stored default envs, check if $ENV_DEFAULT exist"
         exit
     fi
 }
