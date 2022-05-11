@@ -219,15 +219,24 @@ makeinstall_init() {
   fi
 
   cp $PKG_DIR/scripts/functions $INSTALL
+  
   if [ "$PROFILE" = 'extreme' ]; then
-    cp $PKG_DIR/scripts/init-extreme $INSTALL/init
+    if find_file_path initramfs/init-extreme; then
+      cp ${FOUND_PATH} $INSTALL/init
+    else
+      die "FAILURE: unable to find init-exteme"
+    fi
   elif [ "$PROFILE" = 'hybrid' ]; then
-    cp $PKG_DIR/scripts/init-hybrid $INSTALL/init
+    if find_file_path initramfs/init-hybrid; then
+      cp ${FOUND_PATH} $INSTALL/init
+    else
+      die "FAILURE: unable to find init-hybrid"
+    fi
   else
     cp $PKG_DIR/scripts/init $INSTALL
-  fi
-  sed -e "s/@DISTRONAME@/$DISTRONAME/g" \
-      -e "s/@KERNEL_NAME@/$KERNEL_NAME/g" \
-      -i $INSTALL/init
+    sed -e "s/@DISTRONAME@/$DISTRONAME/g" \
+        -e "s/@KERNEL_NAME@/$KERNEL_NAME/g" \
+        -i $INSTALL/init
   chmod 755 $INSTALL/init
+  fi
 }
