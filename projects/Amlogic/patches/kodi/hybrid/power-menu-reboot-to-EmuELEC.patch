@@ -1,17 +1,17 @@
-From c5c4e9e5db1421cdea5affffc8b5f860a21bf43f Mon Sep 17 00:00:00 2001
+From 0e107c8caf0cde37bfde4b9c84e7c288a5de7e8e Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Sat, 7 May 2022 19:13:33 +0800
+Date: Wed, 11 May 2022 14:47:50 +0800
 Subject: [PATCH] Added power button menu function to reboot to EmuELEC
 
 ---
- addons/skin.estuary/xml/DialogButtonMenu.xml | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ addons/skin.estuary/xml/DialogButtonMenu.xml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/addons/skin.estuary/xml/DialogButtonMenu.xml b/addons/skin.estuary/xml/DialogButtonMenu.xml
-index d02c7d044e..96db75f13d 100644
+index d02c7d044e..69bd3a4da7 100644
 --- a/addons/skin.estuary/xml/DialogButtonMenu.xml
 +++ b/addons/skin.estuary/xml/DialogButtonMenu.xml
-@@ -54,10 +54,11 @@
+@@ -54,8 +54,8 @@
  						<visible>System.CanReboot</visible>
  					</item>
  					<item>
@@ -21,10 +21,7 @@ index d02c7d044e..96db75f13d 100644
 +						<onclick>System.ExecWait("/usr/sbin/reboot_to_emuelec.sh")</onclick>
  						<onclick>Reset()</onclick>
  						<visible>System.PathExist("/dev/system")</visible>
-+						<visible>System.PathExist("/dev/esystem")</visible>
  					</item>
- 					<item>
- 						<label>Restart Kodi</label>
 -- 
-2.36.0
+2.36.1
 
