@@ -28,11 +28,11 @@ if [ -e /@PARTITION_NAME@/.please_resize_me ] ; then
 
   echo "PARTITION RESIZING IN PROGRESS"
   echo ""
-  echo "Please do not reboot or turn off your @DISTRONAME@ device!"
+  echo "Please do not reboot or turn off your HybridELEC/@DISTRONAME@ device!"
   echo ""
 
   StartProgress spinner "Checking file system... " "e2fsck -f -p $PART &>/dev/null"
   StartProgress spinner "Resizing file system... " "resize2fs $PART &>/dev/null"
-  StartProgress countdown "Rebooting in 15s...     " 15 "NOW"
+  StartProgress countdown "Rebooting in 3s...     " 3 "NOW"
 fi
 reboot -f &>/dev/null
