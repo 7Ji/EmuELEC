@@ -123,7 +123,7 @@ rm -rf ${STAMPS_INSTALL}
 mkdir -p ${INSTALL}
 
 # Create base layout of LibreELEC read-only file system
-if [ "${DEVICE#*-}" = "hybrid" ]; then
+if [ "${PROFILE}" = "hybrid" ]; then
   DATA="data"
 else
   DATA="flash"
