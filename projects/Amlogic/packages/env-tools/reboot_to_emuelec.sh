@@ -24,6 +24,6 @@ else
     $SETENV bootcmd 'if itest ${bootfromnand} == 1; then setenv bootfromnand 0; saveenv; else run boot_from_usb; fi; run boot_from_emmc; run storeboot'
 fi
 
-env_set bootemuelec 1
+$SETENV bootemuelec 1
 
 echo "Set next boot to EmuELEC"
