@@ -8,12 +8,11 @@
 #include "gxbb_p200_1G_mibox3.dtsi"
 / {
 	partitions: partitions{
-		parts = <5>;
+		parts = <4>;
 		part-0 = <&boot>;
 		part-1 = <&eboot>;
 		part-2 = <&system>;
-		part-3 = <&esystem>;
-		part-4 = <&data>;
+		part-3 = <&data>;
 		boot:boot{	// CoreELEC kernel
 			pname = "boot";
 			size = <0x0 0xb66000>;
@@ -24,14 +23,9 @@
 			size = <0x0 0xbec000>;
 			mask = <1>;
 		};
-		system:system{	// CoreELEC system
+		system:system{	// HybridELEC system
 			pname = "system";
-			size = <0x0 0x9d2e000>;
-			mask = <1>;
-		};
-		esystem:esystem{	// EmuELEC system
-			pname = "esystem";
-			size = <0x0 0x308f3000>;
+			size = <0x0 0x385e6000>;
 			mask = <1>;
 		};
 		data:data
