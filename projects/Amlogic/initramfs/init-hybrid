@@ -13,6 +13,7 @@
 /usr/bin/busybox mkdir -p /proc
 /usr/bin/busybox mkdir -p /sys
 /usr/bin/busybox mkdir -p /tmp
+/usr/bin/busybox mkdir -p /system
 /usr/bin/busybox mkdir -p /sysroot
 /usr/bin/busybox mkdir -p /data
 /usr/bin/busybox mkdir -p /storage
@@ -116,10 +117,12 @@ mount_common() {
 mount_sysroot() {
   if [ "$SYSTEM_TORAM" = "yes" ]; then
     dd if=/dev/system of=/dev/SYSTEM
-    mount_common '/dev/SYSTEM' "/sysroot" "ro,loop"
+    mount_common '/dev/SYSTEM' "/system" "ro,loop"
   else
-    mount_common '/dev/system' "/sysroot" "ro,loop"
+    mount_common '/dev/system' "/system" "ro,loop"
   fi
+  mount_common '/system/coreelec' '/sysroot' 'bind'
+  umount '/system'
 }
 
 load_modules() {
