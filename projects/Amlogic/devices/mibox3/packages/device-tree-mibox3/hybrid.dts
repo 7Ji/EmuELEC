@@ -16,12 +16,12 @@
 		part-4 = <&data>;
 		boot:boot{	// CoreELEC kernel
 			pname = "boot";
-			size = <0x0 0xb6c000>;
+			size = <0x0 0xb66000>;
 			mask = <1>;
 		};
 		eboot:eboot{	// EmuELEC kernel
 			pname = "eboot";
-			size = <0x0 0xc47000>;
+			size = <0x0 0xbec000>;
 			mask = <1>;
 		};
 		system:system{	// CoreELEC system
@@ -31,7 +31,7 @@
 		};
 		esystem:esystem{	// EmuELEC system
 			pname = "esystem";
-			size = <0x0 0x30876000>;
+			size = <0x0 0x308f3000>;
 			mask = <1>;
 		};
 		data:data
