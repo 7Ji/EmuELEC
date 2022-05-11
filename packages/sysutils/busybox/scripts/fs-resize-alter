@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
+# Copyright (C) 2018-2022 Team CoreELEC (https://coreelec.org)
+# Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
+
+if [ -e /@PARTITION_NAME@/.please_resize_me ] ; then
+  . /usr/lib/coreelec/functions
+
+  hidecursor
+
+  # this sh** was never intended to be used
+  # on already installed and runing system
+  if [ -d /storage/.kodi -o -d /storage/.config -o -d /storage/.cache ] ; then
+    rm -f /@PARTITION_NAME@/.please_resize_me
+    sync
+    echo "Resizing is not permitted - the system has already been initialised."
+    StartProgress countdown "Rebooting in 15s... " 15 "NOW"
+    reboot -f
+  fi
+
+  rm -f /@PARTITION_NAME@/.please_resize_me
+  sync
+
+  PART="/dev/data"
+  umount $PART
+
+  echo "PARTITION RESIZING IN PROGRESS"
+  echo ""
+  echo "Please do not reboot or turn off your @DISTRONAME@ device!"
+  echo ""
+
+  StartProgress spinner "Checking file system... " "e2fsck -f -p $PART &>/dev/null"
+  StartProgress spinner "Resizing file system... " "resize2fs $PART &>/dev/null"
+  StartProgress countdown "Rebooting in 15s...     " 15 "NOW"
+fi
+reboot -f &>/dev/null

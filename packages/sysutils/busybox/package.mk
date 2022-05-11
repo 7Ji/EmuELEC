@@ -136,12 +136,23 @@ makeinstall_target() {
 
   mkdir -p $INSTALL/usr/lib/coreelec
     cp $PKG_DIR/scripts/functions $INSTALL/usr/lib/coreelec
-    cp $PKG_DIR/scripts/fs-resize $INSTALL/usr/lib/coreelec
+    if [ "$PROFILE" = "extreme" -o "$PROFILE" = "hybrid" ]; then
+      cp $PKG_DIR/scripts/fs-resize-alter $INSTALL/usr/lib/coreelec/fs-resize
+      if [ "$PROFILE" = "extreme" ]; then
+        sed -e "s/@PARTITION_NAME@/storage/g" \
+            -i $INSTALL/usr/lib/coreelec/fs-resize
+      else
+        sed -e "s/@PARTITION_NAME@/data/g" \
+            -i $INSTALL/usr/lib/coreelec/fs-resize
+      fi
+    else
+      cp $PKG_DIR/scripts/fs-resize $INSTALL/usr/lib/coreelec
+    fi
     sed -e "s/@DISTRONAME@/$DISTRONAME/g" \
         -i $INSTALL/usr/lib/coreelec/fs-resize
 
     if listcontains "${FIRMWARE}" "rpi-eeprom"; then
-      cp $PKG_DIR/scripts/rpi-flash-firmware $INSTALL/usr/lib/libreelec
+      cp $PKG_DIR/scripts/rpi-flash-firmware $INSTALL/usr/lib/libreelec`
     fi
 
   mkdir -p $INSTALL/etc
