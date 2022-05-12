@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2009-2016 Stephan Raue (stephan@openelec.tv)
-# Copyright (C) 2019-present Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2019-2022 Team LibreELEC (https://libreelec.tv)
+# Copyright (C) 2022-present 7Ji (pugokushin@gmail.com)
 
 PKG_NAME="lirc"
 PKG_VERSION="0.10.1"
@@ -37,6 +38,9 @@ post_makeinstall_target() {
   rm -rf $INSTALL/lib
   rm -rf $INSTALL/usr/share
   rm -rf $INSTALL/etc
+
+  mkdir -p $INSTALL/usr/config
+    cp $PKG_DIR/config/lircd.conf $INSTALL/usr/config
 
   mkdir -p $INSTALL/etc/lirc
     cp -r $PKG_DIR/config/lirc_options.conf $INSTALL/etc/lirc
