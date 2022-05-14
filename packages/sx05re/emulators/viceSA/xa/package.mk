@@ -3,7 +3,7 @@
 
 PKG_NAME="xa"
 PKG_VERSION="2.3.10"
-PKG_SHA256="867b5b26b6524be8bcfbad8820ab3efe422b3e0cc9775dcb743284778868ba78"
+PKG_SHA256="c1e7bb04ddfeab9d25133d7cdc072a3d94ae260dce053abb4bb4d4288b42d14e"
 PKG_ARCH="any"
 PKG_LICENSE="GPL2"
 PKG_SITE="https://github.com/fachat/xa65"
