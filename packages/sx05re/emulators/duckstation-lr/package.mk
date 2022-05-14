@@ -6,7 +6,7 @@ PKG_VERSION="f799f62a"
 PKG_LICENSE="NON-COMMERCIAL"
 PKG_ARCH="aarch64"
 PKG_SITE="https://www.duckstation.org/libretro"
-PKG_URL="${PKG_SITE}/duckstation_libretro_linux_aarch64.zip"
+PKG_URL="https://web.archive.org/web/20210606091330/https://www.duckstation.org/libretro/duckstation_libretro_linux_aarch64.zip"
 PKG_SHORTDESC="Fast PlayStation 1 emulator for PC and Android "
 PKG_TOOLCHAIN="manual"
 
