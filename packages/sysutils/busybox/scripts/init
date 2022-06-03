@@ -696,13 +696,13 @@ mount_storage() {
     else
       mount_part "$disk" "/data" "rw,noatime"
     fi
+    mkdir -p '/data/coreelec'
+    chmod 755 '/data/coreelec'
+    mount_common '/data/coreelec' '/storage' 'bind'
   else
-    # /data should always be writable
-    mount -t tmpfs none /data
+    # /storage should always be writable
+    mount -t tmpfs none /storage
   fi
-  mkdir -p '/data/coreelec'
-  chmod 755 '/data/coreelec'
-  mount_common '/data/coreelec' '/storage' 'bind'
 }
 
 # Make last bootloader label (installer, live, run etc.) as the new default
@@ -797,7 +797,7 @@ check_force_splash() {
     return
   fi
 
-  if [ -f /storage/.please_resize_me ]; then
+  if [ -f /data/.please_resize_me ]; then
     FORCE_SPLASH="yes"
     return
   fi
