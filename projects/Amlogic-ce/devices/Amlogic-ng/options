@@ -56,7 +56,7 @@
     LINUX="amlogic-4.9"
 
   # kernel image name
-    KERNEL_NAME="kernel.img"
+    KERNEL_NAME="ee_kernel.img"
 
 ################################################################################
 # setup build defaults
