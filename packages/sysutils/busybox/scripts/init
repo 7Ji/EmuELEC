@@ -14,6 +14,7 @@
 /usr/bin/busybox mkdir -p /tmp
 /usr/bin/busybox mkdir -p /flash
 /usr/bin/busybox mkdir -p /sysroot
+/usr/bin/busybox mkdir -p /data
 /usr/bin/busybox mkdir -p /storage
 /usr/bin/busybox mkdir -p /run
 
@@ -30,10 +31,10 @@
 UPDATE_ROOT=/storage/.update
 UPDATE_DIR="$UPDATE_ROOT"
 
-UPDATE_KERNEL="KERNEL"
-UPDATE_SYSTEM="SYSTEM"
+UPDATE_KERNEL="ee_kernel.img"
+UPDATE_SYSTEM="ee_SYSTEM"
 IMAGE_KERNEL="@KERNEL_NAME@"
-IMAGE_SYSTEM="SYSTEM"
+IMAGE_SYSTEM="ee_SYSTEM"
 
 BOOT_STEP="start"
 MD5_FAILED="0"
@@ -676,9 +677,9 @@ mount_storage() {
     if [ -n "$OVERLAY" ]; then
       OVERLAY_DIR=$(cat /sys/class/net/eth0/address | tr -d :)
 
-      mount_part "$disk" "/storage" "rw,noatime"
-      mkdir -p /storage/$OVERLAY_DIR
-      umount /storage
+      mount_part "$disk" "/data" "rw,noatime"
+      mkdir -p /data/$OVERLAY_DIR
+      umount /data
 
       # split $disk into $target,$options so we can append $OVERLAY_DIR
       options="${disk#*,}"
@@ -693,8 +694,11 @@ mount_storage() {
     if [ -f /flash/mount-storage.sh ]; then
       . /flash/mount-storage.sh
     else
-      mount_part "$disk" "/storage" "rw,noatime"
+      mount_part "$disk" "/data" "rw,noatime"
     fi
+    mkdir -p '/data/emuelec'
+    chmod 755 '/data/emuelec'
+    mount_common '/data/emuelec' '/storage' 'bind'
   else
     # /storage should always be writable
     mount -t tmpfs none /storage
@@ -836,7 +840,7 @@ check_force_splash() {
     return
   fi
 
-  if [ -f /storage/.please_resize_me ]; then
+  if [ -f /data/.please_resize_me ]; then
     FORCE_SPLASH="yes"
     return
   fi
@@ -1124,6 +1128,7 @@ prepare_sysroot() {
   progress "Preparing system"
 
   mount --move /flash /sysroot/flash
+  mount --move /dataa /sysroot/data
   mount --move /storage /sysroot/storage
 
   if [ ! -d "/sysroot/usr/lib/kernel-overlays/base/lib/modules/$(uname -r)/" -a -f "/sysroot/usr/lib/systemd/systemd" ]; then
@@ -1429,7 +1434,7 @@ fi
 
 BACKUP_FILE=$(ls -1 /sysroot/storage/.restore/??????????????.tar 2>/dev/null | head -n 1)
 
-if [ -f /sysroot/storage/.please_resize_me ]; then
+if [ -f /sysroot/data/.please_resize_me ]; then
   INIT_UNIT="--unit=fs-resize.target"
 elif [ -f /sysroot/storage/.cache/reset_soft -o -f /sysroot/storage/.cache/reset_hard ]; then
   INIT_UNIT="--unit=factory-reset.target"
