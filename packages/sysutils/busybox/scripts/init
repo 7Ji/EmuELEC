@@ -14,6 +14,7 @@
 /usr/bin/busybox mkdir -p /tmp
 /usr/bin/busybox mkdir -p /flash
 /usr/bin/busybox mkdir -p /sysroot
+/usr/bin/busybox mkdir -p /data
 /usr/bin/busybox mkdir -p /storage
 /usr/bin/busybox mkdir -p /run
 
@@ -676,9 +677,9 @@ mount_storage() {
     if [ -n "$OVERLAY" ]; then
       OVERLAY_DIR=$(cat /sys/class/net/eth0/address | tr -d :)
 
-      mount_part "$disk" "/storage" "rw,noatime"
-      mkdir -p /storage/$OVERLAY_DIR
-      umount /storage
+      mount_part "$disk" "/data" "rw,noatime"
+      mkdir -p /data/$OVERLAY_DIR
+      umount /data
 
       # split $disk into $target,$options so we can append $OVERLAY_DIR
       options="${disk#*,}"
@@ -693,12 +694,15 @@ mount_storage() {
     if [ -f /flash/mount-storage.sh ]; then
       . /flash/mount-storage.sh
     else
-      mount_part "$disk" "/storage" "rw,noatime"
+      mount_part "$disk" "/data" "rw,noatime"
     fi
   else
-    # /storage should always be writable
-    mount -t tmpfs none /storage
+    # /data should always be writable
+    mount -t tmpfs none /data
   fi
+  mkdir -p '/data/coreelec'
+  chmod 755 '/data/coreelec'
+  mount_common '/data/coreelec' '/storage' 'bind'
 }
 
 # Make last bootloader label (installer, live, run etc.) as the new default
@@ -1081,6 +1085,7 @@ prepare_sysroot() {
   progress "Preparing system"
 
   mount --move /flash /sysroot/flash
+  mount --move /data /sysroot/data
   mount --move /storage /sysroot/storage
 
   if [ ! -d "/sysroot/usr/lib/kernel-overlays/base/lib/modules/$(uname -r)/" -a -f "/sysroot/usr/lib/systemd/systemd" ]; then
@@ -1385,7 +1390,7 @@ fi
 
 BACKUP_FILE=$(ls -1 /sysroot/storage/.restore/??????????????.tar 2>/dev/null | head -n 1)
 
-if [ -f /sysroot/storage/.please_resize_me ]; then
+if [ -f /sysroot/data/.please_resize_me ]; then
   INIT_UNIT="--unit=fs-resize.target"
 elif [ -f /sysroot/storage/.cache/reset_soft -o -f /sysroot/storage/.cache/reset_hard ]; then
   INIT_UNIT="--unit=factory-reset.target"
