@@ -697,7 +697,6 @@ mount_storage() {
       mount_part "$disk" "/data" "rw,noatime"
     fi
     mkdir -p '/data/emuelec'
-    chmod 755 '/data/emuelec'
     mount_common '/data/emuelec' '/storage' 'bind'
   else
     # /storage should always be writable
