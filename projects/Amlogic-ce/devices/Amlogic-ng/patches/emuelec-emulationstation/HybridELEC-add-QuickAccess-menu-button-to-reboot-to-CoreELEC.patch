@@ -1,0 +1,34 @@
+From 7bd3c5cda86b00e571cca2a2cdb19f017f6bb2d1 Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Sat, 4 Jun 2022 17:24:23 +0800
+Subject: [PATCH] add QA menu button to reboot to CoreELEC
+
+---
+ es-app/src/guis/GuiMenu.cpp | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/es-app/src/guis/GuiMenu.cpp b/es-app/src/guis/GuiMenu.cpp
+index 61f8ee82..0211567e 100644
+--- a/es-app/src/guis/GuiMenu.cpp
++++ b/es-app/src/guis/GuiMenu.cpp
+@@ -4151,6 +4151,17 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
+ 				quitES(QuitMode::QUIT);
+ 			}, _("NO"), nullptr));
+ 		}, "iconControllers");
++
++		s->addEntry(_("REBOOT TO COREELEC"), false, [window] {
++			window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO COREELEC?"), _("YES"),
++				[] {
++				Scripting::fireEvent("quit", "coreelec");
++				runSystemCommand("/usr/sbin/hybrid_reboot_ce", "", nullptr);
++				runSystemCommand("sync", "", nullptr);
++				runSystemCommand("systemctl reboot", "", nullptr);
++				quitES(QuitMode::QUIT);
++			}, _("NO"), nullptr));
++		}, "iconAdvanced");
+ 		
+ 		s->addEntry(_("REBOOT FROM NAND"), false, [window] {
+ 			window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT FROM NAND?"), _("YES"),
+-- 
+2.36.1
+
