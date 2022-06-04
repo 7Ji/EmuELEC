@@ -1,0 +1,28 @@
+From cbc820ba9c6d22703f189b9bcf797c5b51fbcf69 Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Sat, 4 Jun 2022 17:08:49 +0800
+Subject: [PATCH] skin-Estuary: add support to reboot to EmuELEC
+
+---
+ addons/skin.estuary/xml/DialogButtonMenu.xml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/addons/skin.estuary/xml/DialogButtonMenu.xml b/addons/skin.estuary/xml/DialogButtonMenu.xml
+index d02c7d044e..93ba6c7b80 100644
+--- a/addons/skin.estuary/xml/DialogButtonMenu.xml
++++ b/addons/skin.estuary/xml/DialogButtonMenu.xml
+@@ -53,6 +53,11 @@
+ 						<onclick>Reset()</onclick>
+ 						<visible>System.CanReboot</visible>
+ 					</item>
++					<item>
++						<label>Reboot to EmuELEC</label>
++						<onclick>System.ExecWait("/usr/sbin/hybrid_reboot_ee")</onclick>
++						<onclick>Reset()</onclick>
++					</item>
+ 					<item>
+ 						<label>Reboot from eMMC/NAND</label>
+ 						<onclick>System.ExecWait("/usr/sbin/rebootfromnand")</onclick>
+-- 
+2.36.1
+
