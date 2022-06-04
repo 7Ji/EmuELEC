@@ -1128,7 +1128,7 @@ prepare_sysroot() {
   progress "Preparing system"
 
   mount --move /flash /sysroot/flash
-  mount --move /dataa /sysroot/data
+  mount --move /data /sysroot/data
   mount --move /storage /sysroot/storage
 
   if [ ! -d "/sysroot/usr/lib/kernel-overlays/base/lib/modules/$(uname -r)/" -a -f "/sysroot/usr/lib/systemd/systemd" ]; then
