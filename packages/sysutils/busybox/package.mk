@@ -144,6 +144,7 @@ makeinstall_target() {
       else
         sed -e "s/@PARTITION_NAME@/data/g" \
             -i $INSTALL/usr/lib/coreelec/fs-resize
+        local DISTRONAME="HybridELEC/$DISTRONAME"
       fi
     else
       cp $PKG_DIR/scripts/fs-resize $INSTALL/usr/lib/coreelec
