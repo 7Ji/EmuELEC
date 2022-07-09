@@ -14,7 +14,7 @@
 			part-2 = <&data>;
 			boot:boot{
 					pname = "boot";
-					size = <0x0 0xb6c000>;
+					size = <0x0 0xb66000>;
 					mask = <1>;
 			};
 			system:system{
