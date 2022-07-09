@@ -1,0 +1,29 @@
+From d0c4bf69a8ce29a097262de0e65a19254075a459 Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Sat, 9 Jul 2022 22:51:58 +0800
+Subject: [PATCH] Remove Reboot to eMMC/NAND button
+
+---
+ addons/skin.estuary/xml/DialogButtonMenu.xml | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/addons/skin.estuary/xml/DialogButtonMenu.xml b/addons/skin.estuary/xml/DialogButtonMenu.xml
+index d02c7d044e..ba58e23f68 100644
+--- a/addons/skin.estuary/xml/DialogButtonMenu.xml
++++ b/addons/skin.estuary/xml/DialogButtonMenu.xml
+@@ -53,12 +53,6 @@
+ 						<onclick>Reset()</onclick>
+ 						<visible>System.CanReboot</visible>
+ 					</item>
+-					<item>
+-						<label>Reboot from eMMC/NAND</label>
+-						<onclick>System.ExecWait("/usr/sbin/rebootfromnand")</onclick>
+-						<onclick>Reset()</onclick>
+-						<visible>System.PathExist("/dev/system")</visible>
+-					</item>
+ 					<item>
+ 						<label>Restart Kodi</label>
+ 						<onclick>RestartApp()</onclick>
+-- 
+2.37.0
+
