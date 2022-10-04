@@ -50,7 +50,10 @@ if [ "${SUBDEVICE}" != "Generic" ]; then
     fi
     if [ "${SUBDEVICE}" == "Odroid_Go_Ultra" ]; then
         echo "Copying OGU-specific resources (BIOS, battery images)"
-        mcopy "$(get_build_dir u-boot-Odroid_Go_Ultra)/tools/odroid_resource/"*
+        (
+            . config/options ""
+            mcopy "$(get_build_dir u-boot-Odroid_Go_Ultra)/tools/odroid_resource/"*
+        )
     fi
   fi
 
