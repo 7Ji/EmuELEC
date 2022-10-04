@@ -1,6 +1,6 @@
-From 2fe116365baa75975cd9785cb1001eb99ecd6c42 Mon Sep 17 00:00:00 2001
+From 543eb53d43f63de4c4693bda1cec2e8419b1d56a Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Tue, 4 Oct 2022 19:12:47 +0800
+Date: Tue, 4 Oct 2022 19:33:33 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -30,6 +30,7 @@ Subject: [PATCH] OGU: introduce
  drivers/power/supply/rk818_charger.c          | 1992 +++++++++
  drivers/regulator/rk808-regulator.c           |  966 ++++-
  drivers/rtc/rtc-rk808.c                       |   95 +-
+ include/linux/clk-provider.h                  |    3 +-
  include/linux/extcon.h                        |    1 +
  include/linux/mfd/rk808.h                     |  856 +++-
  include/linux/platform_data/emuelec.h         |   19 +
@@ -37,7 +38,7 @@ Subject: [PATCH] OGU: introduce
  include/linux/rk_keys.h                       |   19 +
  lib/radix-tree.c                              |    2 +
  mm/cma.c                                      |    2 +
- 33 files changed, 13325 insertions(+), 281 deletions(-)
+ 34 files changed, 13327 insertions(+), 282 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -13611,6 +13612,20 @@ index 35c9aada07c8..b84f0f210169 100644
  			   RTC_STATUS_MASK);
  	if (ret) {
  		dev_err(&pdev->dev,
+diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
+index 9116cb293c7d..0f1c150a1d9d 100644
+--- a/include/linux/clk-provider.h
++++ b/include/linux/clk-provider.h
+@@ -25,7 +25,8 @@
+ #define CLK_SET_PARENT_GATE	BIT(1) /* must be gated across re-parent */
+ #define CLK_SET_RATE_PARENT	BIT(2) /* propagate rate change up one level */
+ #define CLK_IGNORE_UNUSED	BIT(3) /* do not gate even if unused */
+-				/* unused */
++				/* unused for CE kernel, but added from HK */
++#define CLK_IS_ROOT               BIT(4) /* root clk, has no parent */
+ #define CLK_IS_BASIC		BIT(5) /* Basic clk, can't do a to_clk_foo() */
+ #define CLK_GET_RATE_NOCACHE	BIT(6) /* do not use the cached clk rate */
+ #define CLK_SET_RATE_NO_REPARENT BIT(7) /* don't re-parent on rate change */
 diff --git a/include/linux/extcon.h b/include/linux/extcon.h
 index 291345187854..472d73f27d99 100644
 --- a/include/linux/extcon.h
