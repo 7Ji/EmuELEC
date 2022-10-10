@@ -1,6 +1,6 @@
-From f60a7d3b55caac9e7b8ec270c5c38b705b9dc9fa Mon Sep 17 00:00:00 2001
+From 14dd2eff7744bb6a07c2065f541da20a8f1bc5e1 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Mon, 10 Oct 2022 12:11:29 +0800
+Date: Mon, 10 Oct 2022 12:50:32 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -21,7 +21,7 @@ Subject: [PATCH] OGU: introduce
  drivers/input/misc/Kconfig                    |    6 +
  drivers/input/misc/Makefile                   |    1 +
  drivers/input/misc/rk8xx-pwrkey.c             |  173 +
- drivers/mfd/rk808.c                           | 1521 ++++++-
+ drivers/mfd/rk808.c                           | 1529 ++++++-
  drivers/pinctrl/Kconfig                       |    9 +
  drivers/pinctrl/Makefile                      |    1 +
  drivers/pinctrl/pinctrl-rk805.c               |  689 ++++
@@ -30,7 +30,7 @@ Subject: [PATCH] OGU: introduce
  drivers/power/supply/rk818_battery.c          | 3623 +++++++++++++++++
  drivers/power/supply/rk818_battery.h          |  168 +
  drivers/power/supply/rk818_charger.c          | 1992 +++++++++
- drivers/regulator/rk808-regulator.c           |  966 ++++-
+ drivers/regulator/rk808-regulator.c           |  968 ++++-
  drivers/rtc/rtc-rk808.c                       |   95 +-
  include/linux/clk-provider.h                  |    3 +-
  include/linux/extcon.h                        |    1 +
@@ -44,7 +44,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 40 files changed, 14681 insertions(+), 282 deletions(-)
+ 40 files changed, 14688 insertions(+), 285 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -3742,7 +3742,7 @@ index 000000000000..1fbd95f8894b
 +MODULE_DESCRIPTION("RK8xx Power Button");
 +MODULE_AUTHOR("Chen Jianhong <chenjh@rock-chips.com>");
 diff --git a/drivers/mfd/rk808.c b/drivers/mfd/rk808.c
-index 0f8acc5882a4..22b5bbf2a80b 100644
+index 0f8acc5882a4..71bdc26a2c84 100644
 --- a/drivers/mfd/rk808.c
 +++ b/drivers/mfd/rk808.c
 @@ -1,15 +1,11 @@
@@ -3763,7 +3763,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
   * This program is free software; you can redistribute it and/or modify it
   * under the terms and conditions of the GNU General Public License,
   * version 2, as published by the Free Software Foundation.
-@@ -20,13 +16,23 @@
+@@ -20,13 +16,25 @@
   * more details.
   */
  
@@ -3779,15 +3779,17 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  #include <linux/regmap.h>
 +#include <linux/syscore_ops.h>
 +
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#define CONFIG_ARCH_MESON64_ODROID_COMMON
++
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +#include <linux/gpio.h>
 +#include <linux/of_gpio.h>
 +#include <linux/arm-smccc.h>
-+// #endif
++#endif
  
  struct rk808_reg_data {
  	int addr;
-@@ -62,22 +68,238 @@ static bool rk808_is_volatile_reg(struct device *dev, unsigned int reg)
+@@ -62,22 +70,238 @@ static bool rk808_is_volatile_reg(struct device *dev, unsigned int reg)
  	return false;
  }
  
@@ -3822,7 +3824,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +static int suspend_reg_num, resume_reg_num;
 +
 +
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +static noinline int psci_fn_smc(u64 function_id, u64 arg0, u64 arg1,
 +                                        u64 arg2)
 +{
@@ -3843,7 +3845,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	psci_fn_smc(0x84000008, 0, 0, 0);
 +}
 +
-+// #endif
++#endif
 +
 +
 +static int rk808_shutdown(struct regmap *regmap)
@@ -4030,7 +4032,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  static struct resource rtc_resources[] = {
  	{
  		.start  = RK808_IRQ_RTC_ALARM,
-@@ -86,23 +308,61 @@ static struct resource rtc_resources[] = {
+@@ -86,23 +310,61 @@ static struct resource rtc_resources[] = {
  	}
  };
  
@@ -4100,7 +4102,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  	},
  };
  
-@@ -113,28 +373,11 @@ static const struct rk808_reg_data rk808_pre_init_reg[] = {
+@@ -113,28 +375,11 @@ static const struct rk808_reg_data rk808_pre_init_reg[] = {
  	{ RK808_BUCK1_CONFIG_REG, BUCK1_RATE_MASK,  BUCK_ILMIN_200MA },
  	{ RK808_BUCK2_CONFIG_REG, BUCK2_RATE_MASK,  BUCK_ILMIN_200MA },
  	{ RK808_DCDC_UV_ACT_REG,  BUCK_UV_ACT_MASK, BUCK_UV_ACT_DISABLE},
@@ -4130,7 +4132,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  static const struct regmap_irq rk808_irqs[] = {
  	/* INT_STS */
  	[RK808_IRQ_VOUT_LO] = {
-@@ -177,80 +420,343 @@ static const struct regmap_irq rk808_irqs[] = {
+@@ -177,86 +422,337 @@ static const struct regmap_irq rk808_irqs[] = {
  	},
  };
  
@@ -4253,38 +4255,38 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	/* INT_STS */
 +	[RK816_IRQ_PLUG_IN] = {
 +		.mask = RK816_IRQ_PLUG_IN_MSK,
-+		.reg_offset = 0,
-+	},
-+	[RK816_IRQ_PLUG_OUT] = {
-+		.mask = RK816_IRQ_PLUG_OUT_MSK,
  		.reg_offset = 0,
  	},
 -	[RK818_IRQ_PWRON_LP] = {
 -		.mask = RK818_IRQ_PWRON_LP_MSK,
-+	[RK816_IRQ_CHG_OK] = {
-+		.mask = RK816_IRQ_CHG_OK_MSK,
++	[RK816_IRQ_PLUG_OUT] = {
++		.mask = RK816_IRQ_PLUG_OUT_MSK,
  		.reg_offset = 0,
  	},
 -	[RK818_IRQ_HOTDIE] = {
 -		.mask = RK818_IRQ_HOTDIE_MSK,
-+	[RK816_IRQ_CHG_TE] = {
-+		.mask = RK816_IRQ_CHG_TE_MSK,
++	[RK816_IRQ_CHG_OK] = {
++		.mask = RK816_IRQ_CHG_OK_MSK,
  		.reg_offset = 0,
  	},
 -	[RK818_IRQ_RTC_ALARM] = {
 -		.mask = RK818_IRQ_RTC_ALARM_MSK,
-+	[RK816_IRQ_CHG_TS] = {
-+		.mask = RK816_IRQ_CHG_TS_MSK,
++	[RK816_IRQ_CHG_TE] = {
++		.mask = RK816_IRQ_CHG_TE_MSK,
  		.reg_offset = 0,
  	},
 -	[RK818_IRQ_RTC_PERIOD] = {
 -		.mask = RK818_IRQ_RTC_PERIOD_MSK,
-+	[RK816_IRQ_CHG_CVTLIM] = {
-+		.mask = RK816_IRQ_CHG_CVTLIM_MSK,
++	[RK816_IRQ_CHG_TS] = {
++		.mask = RK816_IRQ_CHG_TS_MSK,
  		.reg_offset = 0,
  	},
 -	[RK818_IRQ_USB_OV] = {
 -		.mask = RK818_IRQ_USB_OV_MSK,
++	[RK816_IRQ_CHG_CVTLIM] = {
++		.mask = RK816_IRQ_CHG_CVTLIM_MSK,
++		.reg_offset = 0,
++	},
 +	[RK816_IRQ_DISCHG_ILIM] = {
 +		.mask = RK816_IRQ_DISCHG_ILIM_MSK,
  		.reg_offset = 0,
@@ -4315,12 +4317,12 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +};
 +
 +static const struct mfd_cell rk818s[] = {
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +	{ .name = "rk818-regulator", },
-+// #else
-+// 	{ .name = "rk808-clkout", },
-+// 	{ .name = "rk808-regulator", },
-+// #endif
++#else
++	{ .name = "rk808-clkout", },
++	{ .name = "rk808-regulator", },
++#endif
 +	{ .name = "rk818-battery", .of_compatible = "rk818-battery", },
 +	{ .name = "rk818-charger", },
 +	{
@@ -4329,9 +4331,9 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +		.resources = &rtc_resources[0],
 +	},
 +};
- 
++
 +static const struct rk808_reg_data rk818_pre_init_reg[] = {
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +	{ RK818_BUCK1_ON_VSEL_REG, 0x3f, 0x1a},//vdd_cpu_a : default 1.0375
 +	{ RK818_BUCK1_SLP_VSEL_REG, 0x3f, 0x1a},//vdd_cpu_a : default 1.0375
 +	{ RK818_BUCK2_ON_VSEL_REG, 0x3f, 0x0d},//vdd_ee : default 0.875
@@ -4355,16 +4357,16 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +			LDO9_EN_ENABLE | SWITCH_EN_ENABLE },
 +	{ RK818_SLEEP_SET_OFF_REG1, OTG_SLP_SET_MASK, OTG_SLP_SET_OFF },
 +	{ RK808_RTC_CTRL_REG, RTC_STOP, RTC_STOP},
-+// #else
-+// 	{ RK818_H5V_EN_REG, REF_RDY_CTRL_ENABLE | H5V_EN_MASK,
-+// 					REF_RDY_CTRL_ENABLE | H5V_EN_ENABLE },
-+// 	{ RK818_DCDC_EN_REG, BOOST_EN_MASK | SWITCH_EN_MASK,
-+// 					BOOST_EN_ENABLE | SWITCH_EN_ENABLE },
-+// 	{ RK818_SLEEP_SET_OFF_REG1, OTG_SLP_SET_MASK, OTG_SLP_SET_OFF },
-+// 	{ RK818_BUCK4_CONFIG_REG, BUCK_ILMIN_MASK,  BUCK_ILMIN_250MA },
-+// 	{ RK808_RTC_CTRL_REG, RTC_STOP, RTC_STOP},
-+// 	{ RK808_CLK32OUT_REG, CLK32KOUT2_FUNC_MASK, CLK32KOUT2_FUNC},
-+// #endif
++#else
++	{ RK818_H5V_EN_REG, REF_RDY_CTRL_ENABLE | H5V_EN_MASK,
++					REF_RDY_CTRL_ENABLE | H5V_EN_ENABLE },
++	{ RK818_DCDC_EN_REG, BOOST_EN_MASK | SWITCH_EN_MASK,
++					BOOST_EN_ENABLE | SWITCH_EN_ENABLE },
++	{ RK818_SLEEP_SET_OFF_REG1, OTG_SLP_SET_MASK, OTG_SLP_SET_OFF },
++	{ RK818_BUCK4_CONFIG_REG, BUCK_ILMIN_MASK,  BUCK_ILMIN_250MA },
++	{ RK808_RTC_CTRL_REG, RTC_STOP, RTC_STOP},
++	{ RK808_CLK32OUT_REG, CLK32KOUT2_FUNC_MASK, CLK32KOUT2_FUNC},
++#endif
 +};
 +
 +static struct rk808_reg_data rk818_suspend_reg[] = {
@@ -4378,9 +4380,9 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	{ RK808_VB_MON_REG, VBAT_LOW_VOL_MASK | VBAT_LOW_ACT_MASK,
 +	  RK808_VBAT_LOW_3V0 | EN_VABT_LOW_SHUT_DOWN },
 +};
-+
+ 
 +static const struct regmap_irq rk818_irqs[] = {
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
  	/* INT_STS2 */
  	[RK818_IRQ_PLUG_IN] = {
 -		.mask = RK818_IRQ_PLUG_IN_MSK,
@@ -4422,96 +4424,104 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +		.mask = DISCHG_ILIM_MASK,
  		.reg_offset = 1,
  	},
-+// #else
-+// 	/* INT_STS */
-+// 	[RK818_IRQ_VOUT_LO] = {
-+// 		.mask = VOUT_LO_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_VB_LO] = {
-+// 		.mask = VB_LO_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_PWRON] = {
-+// 		.mask = PWRON_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_PWRON_LP] = {
-+// 		.mask = PWRON_LP_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_HOTDIE] = {
-+// 		.mask = HOTDIE_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_RTC_ALARM] = {
-+// 		.mask = RTC_ALARM_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_RTC_PERIOD] = {
-+// 		.mask = RTC_PERIOD_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	[RK818_IRQ_USB_OV] = {
-+// 		.mask = USB_OV_MASK,
-+// 		.reg_offset = 0,
-+// 	},
-+// 	/* INT_STS2 */
-+// 	[RK818_IRQ_PLUG_IN] = {
-+// 		.mask = PLUG_IN_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_PLUG_OUT] = {
-+// 		.mask = PLUG_OUT_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_CHG_OK] = {
-+// 		.mask = CHGOK_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_CHG_TE] = {
-+// 		.mask = CHGTE_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_CHG_TS1] = {
-+// 		.mask = CHGTS1_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_TS2] = {
-+// 		.mask = TS2_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_CHG_CVTLIM] = {
-+// 		.mask = CHG_CVTLIM_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// 	[RK818_IRQ_DISCHG_ILIM] = {
-+// 		.mask = DISCHG_ILIM_MASK,
-+// 		.reg_offset = 1,
-+// 	},
-+// #endif
- };
- 
+-};
+-
 -static struct regmap_irq_chip rk808_irq_chip = {
 -	.name = "rk808",
 -	.irqs = rk808_irqs,
 -	.num_irqs = ARRAY_SIZE(rk808_irqs),
-+static struct regmap_irq_chip rk818_irq_chip = {
-+	.name = "rk818",
-+	.irqs = rk818_irqs,
-+	.num_irqs = ARRAY_SIZE(rk818_irqs),
+-	.num_regs = 2,
+-	.irq_reg_stride = 2,
+-	.status_base = RK808_INT_STS_REG1,
+-	.mask_base = RK808_INT_STS_MSK_REG1,
+-	.ack_base = RK808_INT_STS_REG1,
+-	.init_ack_masked = true,
++#else
++	/* INT_STS */
++	[RK818_IRQ_VOUT_LO] = {
++		.mask = VOUT_LO_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_VB_LO] = {
++		.mask = VB_LO_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_PWRON] = {
++		.mask = PWRON_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_PWRON_LP] = {
++		.mask = PWRON_LP_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_HOTDIE] = {
++		.mask = HOTDIE_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_RTC_ALARM] = {
++		.mask = RTC_ALARM_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_RTC_PERIOD] = {
++		.mask = RTC_PERIOD_MASK,
++		.reg_offset = 0,
++	},
++	[RK818_IRQ_USB_OV] = {
++		.mask = USB_OV_MASK,
++		.reg_offset = 0,
++	},
++	/* INT_STS2 */
++	[RK818_IRQ_PLUG_IN] = {
++		.mask = PLUG_IN_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_PLUG_OUT] = {
++		.mask = PLUG_OUT_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_CHG_OK] = {
++		.mask = CHGOK_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_CHG_TE] = {
++		.mask = CHGTE_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_CHG_TS1] = {
++		.mask = CHGTS1_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_TS2] = {
++		.mask = TS2_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_CHG_CVTLIM] = {
++		.mask = CHG_CVTLIM_MASK,
++		.reg_offset = 1,
++	},
++	[RK818_IRQ_DISCHG_ILIM] = {
++		.mask = DISCHG_ILIM_MASK,
++		.reg_offset = 1,
++	},
++#endif
+ };
+ 
+ static struct regmap_irq_chip rk818_irq_chip = {
+@@ -265,14 +761,206 @@ static struct regmap_irq_chip rk818_irq_chip = {
+ 	.num_irqs = ARRAY_SIZE(rk818_irqs),
  	.num_regs = 2,
  	.irq_reg_stride = 2,
- 	.status_base = RK808_INT_STS_REG1,
-@@ -259,20 +765,200 @@ static struct regmap_irq_chip rk808_irq_chip = {
+-	.status_base = RK818_INT_STS_REG1,
+-	.mask_base = RK818_INT_STS_MSK_REG1,
+-	.ack_base = RK818_INT_STS_REG1,
++	.status_base = RK808_INT_STS_REG1,
++	.mask_base = RK808_INT_STS_MSK_REG1,
++	.ack_base = RK808_INT_STS_REG1,
  	.init_ack_masked = true,
  };
  
--static struct regmap_irq_chip rk818_irq_chip = {
--	.name = "rk818",
--	.irqs = rk818_irqs,
--	.num_irqs = ARRAY_SIZE(rk818_irqs),
--	.num_regs = 2,
+-static struct i2c_client *rk808_i2c_client;
+-static void rk808_device_shutdown(void)
 +static const struct regmap_irq rk805_irqs[] = {
 +	[RK805_IRQ_PWRON_RISE] = {
 +		.mask = RK805_IRQ_PWRON_RISE_MSK,
@@ -4628,20 +4638,15 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	.irqs = rk817_irqs,
 +	.num_irqs = ARRAY_SIZE(rk817_irqs),
 +	.num_regs = 3,
- 	.irq_reg_stride = 2,
--	.status_base = RK818_INT_STS_REG1,
--	.mask_base = RK818_INT_STS_MSK_REG1,
--	.ack_base = RK818_INT_STS_REG1,
++	.irq_reg_stride = 2,
 +	.status_base = RK817_INT_STS_REG0,
 +	.mask_base = RK817_INT_STS_MSK_REG0,
 +	.ack_base = RK817_INT_STS_REG0,
- 	.init_ack_masked = true,
- };
- 
--static struct i2c_client *rk808_i2c_client;
--static void rk808_device_shutdown(void)
++	.init_ack_masked = true,
++};
++
 +static const struct mfd_cell rk817s[] = {
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +	{ .name = "rk808-regulator",},
 +	{
 +		.name = "rk8xx-pwrkey",
@@ -4652,30 +4657,30 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +		.name = "rk817-codec",
 +		.of_compatible = "rockchip,rk817-codec",
 +	},
-+// #else
-+// 	{ .name = "rk808-clkout",},
-+// 	{ .name = "rk808-regulator",},
-+// 	{ .name = "rk817-battery", .of_compatible = "rk817,battery", },
-+// 	{ .name = "rk817-charger", .of_compatible = "rk817,charger", },
-+// 	{
-+// 		.name = "rk8xx-pwrkey",
-+// 		.num_resources = ARRAY_SIZE(rk817_pwrkey_resources),
-+// 		.resources = &rk817_pwrkey_resources[0],
-+// 	},
-+// 	{
-+// 		.name = "rk808-rtc",
-+// 		.num_resources = ARRAY_SIZE(rk817_rtc_resources),
-+// 		.resources = &rk817_rtc_resources[0],
-+// 	},
-+// 	{
-+// 		.name = "rk817-codec",
-+// 		.of_compatible = "rockchip,rk817-codec",
-+// 	},
-+// #endif
++#else
++	{ .name = "rk808-clkout",},
++	{ .name = "rk808-regulator",},
++	{ .name = "rk817-battery", .of_compatible = "rk817,battery", },
++	{ .name = "rk817-charger", .of_compatible = "rk817,charger", },
++	{
++		.name = "rk8xx-pwrkey",
++		.num_resources = ARRAY_SIZE(rk817_pwrkey_resources),
++		.resources = &rk817_pwrkey_resources[0],
++	},
++	{
++		.name = "rk808-rtc",
++		.num_resources = ARRAY_SIZE(rk817_rtc_resources),
++		.resources = &rk817_rtc_resources[0],
++	},
++	{
++		.name = "rk817-codec",
++		.of_compatible = "rockchip,rk817-codec",
++	},
++#endif
 +};
 +
 +static const struct rk808_reg_data rk817_pre_init_reg[] = {
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +	{RK817_BUCK2_ON_VSEL_REG, 0x7f, 0x2B},	/*vddcpu_b : 1.0375 (default)*/
 +	{RK817_BUCK3_ON_VSEL_REG, 0x7f, 0x20},	/*vcc_2v3 : 2.4 (default)*/
 +
@@ -4683,12 +4688,12 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	{RK817_POWER_EN_REG(1), 0xff, 0x88},
 +	{RK817_SYS_CFG(1), RK817_HOTDIE_TEMP_MSK | RK817_TSD_TEMP_MSK,
 +					   RK817_HOTDIE_105 | RK817_TSD_140},
-+// #else
-+// 	{RK817_RTC_CTRL_REG, RTC_STOP, RTC_STOP},
-+// 	{RK817_GPIO_INT_CFG, RK817_INT_POL_MSK, RK817_INT_POL_L},
-+// 	{RK817_SYS_CFG(1), RK817_HOTDIE_TEMP_MSK | RK817_TSD_TEMP_MSK,
-+// 					   RK817_HOTDIE_105 | RK817_TSD_140},
-+// #endif
++#else
++	{RK817_RTC_CTRL_REG, RTC_STOP, RTC_STOP},
++	{RK817_GPIO_INT_CFG, RK817_INT_POL_MSK, RK817_INT_POL_L},
++	{RK817_SYS_CFG(1), RK817_HOTDIE_TEMP_MSK | RK817_TSD_TEMP_MSK,
++					   RK817_HOTDIE_105 | RK817_TSD_140},
++#endif
 +};
 +
 +static void rk808_device_shutdown_prepare(void)
@@ -4714,7 +4719,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  {
  	int ret;
  	struct rk808 *rk808 = i2c_get_clientdata(rk808_i2c_client);
-@@ -283,18 +969,295 @@ static void rk808_device_shutdown(void)
+@@ -283,18 +971,295 @@ static void rk808_device_shutdown(void)
  		return;
  	}
  
@@ -4919,22 +4924,22 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	struct rk817_reboot_data_t *data;
 +	int ret;
 +	struct device *dev;
-+// #ifndef CONFIG_ARCH_MESON64_ODROID_COMMON
-+// 	int value, power_en_active0, power_en_active1;
++#ifndef CONFIG_ARCH_MESON64_ODROID_COMMON
++	int value, power_en_active0, power_en_active1;
 +
-+// 	regmap_read(data->rk808->regmap, RK817_POWER_EN_SAVE0,
-+// 		&power_en_active0);
-+// 	regmap_read(data->rk808->regmap, RK817_POWER_EN_SAVE1,
-+// 		&power_en_active1);
-+// 	value = power_en_active0 & 0x0f;
-+// 	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(0), value | 0xf0);
-+// 	value = (power_en_active0 & 0xf0) >> 4;
-+// 	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(1), value | 0xf0);
-+// 	value = power_en_active1 & 0x0f;
-+// 	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(2), value | 0xf0);
-+// 	value = (power_en_active1 & 0xf0) >> 4;
-+// 	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(3), value | 0xf0);
-+// #endif
++	regmap_read(data->rk808->regmap, RK817_POWER_EN_SAVE0,
++		&power_en_active0);
++	regmap_read(data->rk808->regmap, RK817_POWER_EN_SAVE1,
++		&power_en_active1);
++	value = power_en_active0 & 0x0f;
++	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(0), value | 0xf0);
++	value = (power_en_active0 & 0xf0) >> 4;
++	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(1), value | 0xf0);
++	value = power_en_active1 & 0x0f;
++	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(2), value | 0xf0);
++	value = (power_en_active1 & 0xf0) >> 4;
++	regmap_write(data->rk808->regmap, RK817_POWER_EN_REG(3), value | 0xf0);
++#endif
 +
 +	if (action != SYS_RESTART)
 +		return NOTIFY_OK;
@@ -5013,7 +5018,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  MODULE_DEVICE_TABLE(of, rk808_of_match);
  
  static int rk808_probe(struct i2c_client *client,
-@@ -302,119 +1265,406 @@ static int rk808_probe(struct i2c_client *client,
+@@ -302,119 +1267,406 @@ static int rk808_probe(struct i2c_client *client,
  {
  	struct device_node *np = client->dev.of_node;
  	struct rk808 *rk808;
@@ -5038,10 +5043,10 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	void (*of_property_prepare_fn)(struct rk808 *rk808,
 +				       struct device *dev) = NULL;
 +	int (*pinctrl_init)(struct device *dev, struct rk808 *rk808) = NULL;
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +	int irq_gpio;
 +	char sysfs_name[8];
-+// #endif
++#endif
  	rk808 = devm_kzalloc(&client->dev, sizeof(*rk808), GFP_KERNEL);
  	if (!rk808)
  		return -ENOMEM;
@@ -5061,21 +5066,21 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  			RK808_ID_MSB);
 -		return rk808->variant;
 +		return msb;
-+	}
-+
+ 	}
+ 
+-	dev_dbg(&client->dev, "Chip id: 0x%x\n", (unsigned int)rk808->variant);
 +	lsb = i2c_smbus_read_byte_data(client, pmic_id_lsb);
 +	if (lsb < 0) {
 +		dev_err(&client->dev, "failed to read the chip id at 0x%x\n",
 +			RK808_ID_LSB);
 +		return lsb;
- 	}
++	}
  
--	dev_dbg(&client->dev, "Chip id: 0x%x\n", (unsigned int)rk808->variant);
 +	rk808->variant = ((msb << 8) | lsb) & RK8XX_ID_MSK;
 +	sprintf(sysfs_name, "rk%lx", rk808->variant);
 +	dev_info(&client->dev, "Pmic Chip id: 0x%lx, sysfs: %s\n", rk808->variant,sysfs_name);
 +
-+// #ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
 +	irq_gpio = of_get_named_gpio(np, "gpio-irq", 0);
 +	if (irq_gpio < 0) {
 +		dev_err(&client->dev, "No interrupt pin, no core IRQ\n");
@@ -5094,8 +5099,8 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +	client->irq = gpio_to_irq(irq_gpio);
 +	if (client->irq)
 +		dev_info(&client->dev, "Pmic irq gpio irq number : %d\n", client->irq);
- 
-+// #endif
++
++#endif
 +	/* set Chip platform init data*/
  	switch (rk808->variant) {
 +	case RK816_ID:
@@ -5228,8 +5233,11 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +				return ret;
 +			}
 +		}
-+	}
-+
+ 	}
+ 
+-	ret = regmap_add_irq_chip(rk808->regmap, client->irq,
+-				  IRQF_ONESHOT, -1,
+-				  rk808->regmap_irq_chip, &rk808->irq_data);
 +	if (of_property_prepare_fn)
 +		of_property_prepare_fn(rk808, &client->dev);
 +
@@ -5241,11 +5249,8 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
 +		ret = pinctrl_init(&client->dev, rk808);
 +		if (ret)
 +			return ret;
- 	}
- 
--	ret = regmap_add_irq_chip(rk808->regmap, client->irq,
--				  IRQF_ONESHOT, -1,
--				  rk808->regmap_irq_chip, &rk808->irq_data);
++	}
++
 +	ret = regmap_add_irq_chip(rk808->regmap,
 +				client->irq, IRQF_ONESHOT | IRQF_SHARED, -1,
 +				irq_chip, &rk808->irq_data);
@@ -5468,7 +5473,7 @@ index 0f8acc5882a4..22b5bbf2a80b 100644
  	{ "rk818" },
  	{ },
  };
-@@ -424,16 +1674,29 @@ static struct i2c_driver rk808_i2c_driver = {
+@@ -424,16 +1676,29 @@ static struct i2c_driver rk808_i2c_driver = {
  	.driver = {
  		.name = "rk808",
  		.of_match_table = rk808_of_match,
@@ -12067,10 +12072,17 @@ index 000000000000..3935fbea58e6
 +MODULE_ALIAS("platform:rk818-charger");
 +MODULE_AUTHOR("chenjh<chenjh@rock-chips.com>");
 diff --git a/drivers/regulator/rk808-regulator.c b/drivers/regulator/rk808-regulator.c
-index 28646e4cf3ba..42b5776406fd 100644
+index 28646e4cf3ba..65178ff04252 100644
 --- a/drivers/regulator/rk808-regulator.c
 +++ b/drivers/regulator/rk808-regulator.c
-@@ -36,6 +36,11 @@
+@@ -31,11 +31,18 @@
+ #include <linux/regulator/of_regulator.h>
+ #include <linux/gpio/consumer.h>
+ 
++#define CONFIG_ARCH_MESON64_ODROID_COMMON
++
+ /* Field Definitions */
+ #define RK808_BUCK_VSEL_MASK	0x3f
  #define RK808_BUCK4_VSEL_MASK	0xf
  #define RK808_LDO_VSEL_MASK	0x1f
  
@@ -12082,7 +12094,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  #define RK818_BUCK_VSEL_MASK		0x3f
  #define RK818_BUCK4_VSEL_MASK		0x1f
  #define RK818_LDO_VSEL_MASK		0x1f
-@@ -62,8 +67,8 @@
+@@ -62,8 +69,8 @@
  /* Offset from XXX_EN_REG to SLEEP_SET_OFF_XXX */
  #define RK808_SLP_SET_OFF_REG_OFFSET 2
  
@@ -12093,7 +12105,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  
  #define RK8XX_DESC(_id, _match, _supply, _min, _max, _step, _vreg,	\
  	_vmask, _ereg, _emask, _etime)					\
-@@ -86,6 +91,76 @@
+@@ -86,6 +93,76 @@
  		.ops		= &rk808_reg_ops,			\
  	}
  
@@ -12170,7 +12182,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  #define RK8XX_DESC_SWITCH(_id, _match, _supply, _ereg, _emask)		\
  	[_id] = {							\
  		.name		= (_match),				\
-@@ -100,6 +175,22 @@
+@@ -100,6 +177,22 @@
  		.ops		= &rk808_switch_ops			\
  	}
  
@@ -12193,7 +12205,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  
  struct rk808_regulator_data {
  	struct gpio_desc *dvs_gpio[2];
-@@ -117,10 +208,76 @@ static const struct regulator_linear_range rk808_ldo3_voltage_ranges[] = {
+@@ -117,10 +210,76 @@ static const struct regulator_linear_range rk808_ldo3_voltage_ranges[] = {
  	REGULATOR_LINEAR_RANGE(2500000, 15, 15, 0),
  };
  
@@ -12271,7 +12283,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  	struct gpio_desc *gpio = pdata->dvs_gpio[id];
  	unsigned int val;
  	int ret;
-@@ -189,11 +346,63 @@ static int rk808_buck1_2_i2c_set_voltage_sel(struct regulator_dev *rdev,
+@@ -189,11 +348,63 @@ static int rk808_buck1_2_i2c_set_voltage_sel(struct regulator_dev *rdev,
  	return ret;
  }
  
@@ -12336,7 +12348,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  	struct gpio_desc *gpio = pdata->dvs_gpio[id];
  	unsigned int reg = rdev->desc->vsel_reg;
  	unsigned old_sel;
-@@ -228,11 +437,11 @@ static int rk808_buck1_2_set_voltage_sel(struct regulator_dev *rdev,
+@@ -228,11 +439,11 @@ static int rk808_buck1_2_set_voltage_sel(struct regulator_dev *rdev,
  }
  
  static int rk808_buck1_2_set_voltage_time_sel(struct regulator_dev *rdev,
@@ -12351,7 +12363,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  	struct gpio_desc *gpio = pdata->dvs_gpio[id];
  
  	/* if there is no dvs1/2 pin, we don't need wait extra time here. */
-@@ -245,8 +454,7 @@ static int rk808_buck1_2_set_voltage_time_sel(struct regulator_dev *rdev,
+@@ -245,8 +456,7 @@ static int rk808_buck1_2_set_voltage_time_sel(struct regulator_dev *rdev,
  static int rk808_set_ramp_delay(struct regulator_dev *rdev, int ramp_delay)
  {
  	unsigned int ramp_value = RK808_RAMP_RATE_10MV_PER_US;
@@ -12361,7 +12373,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  
  	switch (ramp_delay) {
  	case 1 ... 2000:
-@@ -269,6 +477,35 @@ static int rk808_set_ramp_delay(struct regulator_dev *rdev, int ramp_delay)
+@@ -269,6 +479,35 @@ static int rk808_set_ramp_delay(struct regulator_dev *rdev, int ramp_delay)
  				  RK808_RAMP_RATE_MASK, ramp_value);
  }
  
@@ -12397,7 +12409,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  static int rk808_set_suspend_voltage(struct regulator_dev *rdev, int uv)
  {
  	unsigned int reg;
-@@ -284,6 +521,29 @@ static int rk808_set_suspend_voltage(struct regulator_dev *rdev, int uv)
+@@ -284,6 +523,29 @@ static int rk808_set_suspend_voltage(struct regulator_dev *rdev, int uv)
  				  sel);
  }
  
@@ -12427,7 +12439,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  static int rk808_set_suspend_voltage_range(struct regulator_dev *rdev, int uv)
  {
  	unsigned int reg;
-@@ -299,9 +559,61 @@ static int rk808_set_suspend_voltage_range(struct regulator_dev *rdev, int uv)
+@@ -299,9 +561,61 @@ static int rk808_set_suspend_voltage_range(struct regulator_dev *rdev, int uv)
  				  sel);
  }
  
@@ -12489,7 +12501,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  
  	reg = rdev->desc->enable_reg + RK808_SLP_SET_OFF_REG_OFFSET;
  
-@@ -313,6 +625,10 @@ static int rk808_set_suspend_enable(struct regulator_dev *rdev)
+@@ -313,6 +627,10 @@ static int rk808_set_suspend_enable(struct regulator_dev *rdev)
  static int rk808_set_suspend_disable(struct regulator_dev *rdev)
  {
  	unsigned int reg;
@@ -12500,7 +12512,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  
  	reg = rdev->desc->enable_reg + RK808_SLP_SET_OFF_REG_OFFSET;
  
-@@ -321,6 +637,119 @@ static int rk808_set_suspend_disable(struct regulator_dev *rdev)
+@@ -321,6 +639,119 @@ static int rk808_set_suspend_disable(struct regulator_dev *rdev)
  				  rdev->desc->enable_mask);
  }
  
@@ -12620,7 +12632,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  static struct regulator_ops rk808_buck1_2_ops = {
  	.list_voltage		= regulator_list_voltage_linear,
  	.map_voltage		= regulator_map_voltage_linear,
-@@ -330,12 +759,65 @@ static struct regulator_ops rk808_buck1_2_ops = {
+@@ -330,12 +761,65 @@ static struct regulator_ops rk808_buck1_2_ops = {
  	.enable			= regulator_enable_regmap,
  	.disable		= regulator_disable_regmap,
  	.is_enabled		= regulator_is_enabled_regmap,
@@ -12686,7 +12698,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  static struct regulator_ops rk808_reg_ops = {
  	.list_voltage		= regulator_list_voltage_linear,
  	.map_voltage		= regulator_map_voltage_linear,
-@@ -343,12 +825,40 @@ static struct regulator_ops rk808_reg_ops = {
+@@ -343,12 +827,40 @@ static struct regulator_ops rk808_reg_ops = {
  	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
  	.enable			= regulator_enable_regmap,
  	.disable		= regulator_disable_regmap,
@@ -12727,7 +12739,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  static struct regulator_ops rk808_reg_ops_ranges = {
  	.list_voltage		= regulator_list_voltage_linear_range,
  	.map_voltage		= regulator_map_voltage_linear_range,
-@@ -356,6 +866,9 @@ static struct regulator_ops rk808_reg_ops_ranges = {
+@@ -356,6 +868,9 @@ static struct regulator_ops rk808_reg_ops_ranges = {
  	.set_voltage_sel	= regulator_set_voltage_sel_regmap,
  	.enable			= regulator_enable_regmap,
  	.disable		= regulator_disable_regmap,
@@ -12737,7 +12749,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  	.is_enabled		= regulator_is_enabled_regmap,
  	.set_suspend_voltage	= rk808_set_suspend_voltage_range,
  	.set_suspend_enable	= rk808_set_suspend_enable,
-@@ -368,6 +881,35 @@ static struct regulator_ops rk808_switch_ops = {
+@@ -368,6 +883,35 @@ static struct regulator_ops rk808_switch_ops = {
  	.is_enabled		= regulator_is_enabled_regmap,
  	.set_suspend_enable	= rk808_set_suspend_enable,
  	.set_suspend_disable	= rk808_set_suspend_disable,
@@ -12773,7 +12785,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  };
  
  static const struct regulator_desc rk808_reg[] = {
-@@ -464,6 +1006,106 @@ static const struct regulator_desc rk808_reg[] = {
+@@ -464,6 +1008,106 @@ static const struct regulator_desc rk808_reg[] = {
  		RK808_DCDC_EN_REG, BIT(6)),
  };
  
@@ -12880,7 +12892,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  static const struct regulator_desc rk818_reg[] = {
  	{
  		.name = "DCDC_REG1",
-@@ -566,10 +1208,283 @@ static const struct regulator_desc rk818_reg[] = {
+@@ -566,10 +1210,283 @@ static const struct regulator_desc rk818_reg[] = {
  		RK818_DCDC_EN_REG, BIT(7)),
  };
  
@@ -13167,7 +13179,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  {
  	struct device_node *np;
  	int tmp, ret = 0, i;
-@@ -589,7 +1504,7 @@ static int rk808_regulator_dt_parse_pdata(struct device *dev,
+@@ -589,7 +1506,7 @@ static int rk808_regulator_dt_parse_pdata(struct device *dev,
  		}
  
  		if (!pdata->dvs_gpio[i]) {
@@ -13176,7 +13188,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  			continue;
  		}
  
-@@ -630,10 +1545,22 @@ static int rk808_regulator_probe(struct platform_device *pdev)
+@@ -630,10 +1547,22 @@ static int rk808_regulator_probe(struct platform_device *pdev)
  		regulators = rk808_reg;
  		nregulators = RK808_NUM_REGULATORS;
  		break;
@@ -13199,7 +13211,7 @@ index 28646e4cf3ba..42b5776406fd 100644
  	default:
  		dev_err(&client->dev, "unsupported RK8XX ID %lu\n",
  			rk808->variant);
-@@ -667,7 +1594,18 @@ static struct platform_driver rk808_regulator_driver = {
+@@ -667,7 +1596,18 @@ static struct platform_driver rk808_regulator_driver = {
  
  module_platform_driver(rk808_regulator_driver);
  
