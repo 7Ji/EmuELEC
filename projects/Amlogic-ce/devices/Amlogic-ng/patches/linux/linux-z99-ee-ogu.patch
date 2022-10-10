@@ -1,6 +1,6 @@
-From 8c94a6e05acc773417d3da588704552c9129112a Mon Sep 17 00:00:00 2001
+From 79538b9ad78f086a1fe9c2edf6e6391f8fbce5a2 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Mon, 10 Oct 2022 15:38:19 +0800
+Date: Mon, 10 Oct 2022 15:47:13 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -72,6 +72,15 @@ Subject: [PATCH] OGU: introduce
  drivers/power/supply/rk818_charger.c          |  1992 +
  drivers/regulator/rk808-regulator.c           |   968 +-
  drivers/rtc/rtc-rk808.c                       |    95 +-
+ include/linux/amlogic/media/vout/lcd/aml_bl.h |    15 +-
+ .../linux/amlogic/media/vout/lcd/aml_lcd.h    |    40 +-
+ .../linux/amlogic/media/vout/lcd/aml_ldim.h   |   205 +-
+ .../linux/amlogic/media/vout/lcd/lcd_extern.h |    24 +-
+ .../linux/amlogic/media/vout/lcd/lcd_notify.h |    26 +-
+ .../amlogic/media/vout/lcd/lcd_tcon_data.h    |   256 -
+ .../amlogic/media/vout/lcd/lcd_unifykey.h     |     4 +-
+ .../linux/amlogic/media/vout/lcd/lcd_vout.h   |    32 +-
+ .../linux/amlogic/media/vout/lcd/ldim_alg.h   |    86 +-
  include/linux/clk-provider.h                  |     3 +-
  include/linux/extcon.h                        |     1 +
  include/linux/mfd/rk808.h                     |   856 +-
@@ -84,7 +93,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |     2 +
  sound/soc/codecs/rk817_codec.c                |  1291 +
  sound/soc/codecs/rk817_codec.h                |   220 +
- 80 files changed, 59457 insertions(+), 12455 deletions(-)
+ 89 files changed, 59570 insertions(+), 13030 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -101,6 +110,7 @@ Subject: [PATCH] OGU: introduce
  create mode 100644 drivers/power/supply/rk818_battery.c
  create mode 100644 drivers/power/supply/rk818_battery.h
  create mode 100644 drivers/power/supply/rk818_charger.c
+ delete mode 100644 include/linux/amlogic/media/vout/lcd/lcd_tcon_data.h
  create mode 100644 include/linux/platform_data/emuelec.h
  create mode 100755 include/linux/power/rk_usbbc.h
  create mode 100755 include/linux/rk_keys.h
@@ -1512,7 +1522,7 @@ index 000000000000..cd5c528a181e
 +};
 diff --git a/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi b/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
 new file mode 100755
-index 000000000000..8eb79d4b22e6
+index 000000000000..130be19fe034
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
 @@ -0,0 +1,214 @@
@@ -1605,9 +1615,9 @@ index 000000000000..8eb79d4b22e6
 +			power_on_step = <0 0 1 1
 +					0 0 0 1
 +					0 0 1 120
-+					3 0 0 0
++					2 0 0 0
 +					0xff 0 0 0>;
-+			power_off_step = <3 0 0 50
++			power_off_step = <2 0 0 50
 +					0 0 0 100
 +					0xff 0 0 0>;
 +		};
@@ -1730,7 +1740,6 @@ index 000000000000..8eb79d4b22e6
 +	pinctrl-names = "pwm_pins";
 +	pinctrl-0 = <&pwm_f_pins2>;
 +};
-\ No newline at end of file
 diff --git a/arch/arm64/boot/dts/amlogic/meson64_gou_pmic.dtsi b/arch/arm64/boot/dts/amlogic/meson64_gou_pmic.dtsi
 new file mode 100755
 index 000000000000..a244975e5f95
@@ -76181,6 +76190,1078 @@ index 35c9aada07c8..b84f0f210169 100644
  			   RTC_STATUS_MASK);
  	if (ret) {
  		dev_err(&pdev->dev,
+diff --git a/include/linux/amlogic/media/vout/lcd/aml_bl.h b/include/linux/amlogic/media/vout/lcd/aml_bl.h
+index 269031641c48..b156d4815b30 100644
+--- a/include/linux/amlogic/media/vout/lcd/aml_bl.h
++++ b/include/linux/amlogic/media/vout/lcd/aml_bl.h
+@@ -52,9 +52,6 @@ enum bl_chip_type_e {
+ 	BL_CHIP_TL1,
+ 	BL_CHIP_SM1,
+ 	BL_CHIP_TM2,
+-	BL_CHIP_TM2B,
+-	BL_CHIP_T5,
+-	BL_CHIP_T5D,
+ 	BL_CHIP_MAX,
+ };
+ 
+@@ -134,7 +131,6 @@ struct bl_pwm_config_s {
+ 	unsigned int level_min;
+ 	unsigned int pwm_freq; /* pwm_vs: 1~4(vfreq), pwm: freq(unit: Hz) */
+ 	unsigned int pwm_duty; /* unit: % */
+-	unsigned int pwm_duty_save; /* unit: %, for power on recovery */
+ 	unsigned int pwm_duty_max; /* unit: % */
+ 	unsigned int pwm_duty_min; /* unit: % */
+ 	unsigned int pwm_cnt; /* internal used for pwm control */
+@@ -181,16 +177,12 @@ struct bl_config_s {
+ /* backlight_properties: state */
+ /* Flags used to signal drivers of state changes */
+ /* Upper 4 bits in bl props are reserved for driver internal use */
+-#define BL_STATE_GD_EN                BIT(4)
+-#define BL_STATE_LCD_ON               BIT(3)
+-#define BL_STATE_BL_INIT_ON           BIT(2)
+-#define BL_STATE_BL_POWER_ON          BIT(1)
+-#define BL_STATE_BL_ON                BIT(0)
++#define BL_STATE_LCD_ON               (1 << 3)
++#define BL_STATE_BL_POWER_ON          (1 << 1)
++#define BL_STATE_BL_ON                (1 << 0)
+ struct aml_bl_drv_s {
+ 	unsigned int index;
+ 	unsigned int level;
+-	unsigned int brightness_level;
+-	unsigned int gd_level;
+ 	unsigned int state;
+ 	struct bl_data_s *data;
+ 	struct device             *dev;
+@@ -199,7 +191,6 @@ struct aml_bl_drv_s {
+ 	struct workqueue_struct   *workqueue;
+ 	struct delayed_work       bl_delayed_work;
+ 	struct resource *res_ldim_vsync_irq;
+-	struct resource *res_bl_vsync_irq;
+ 	/*struct resource *res_ldim_rdma_irq;*/
+ };
+ 
+diff --git a/include/linux/amlogic/media/vout/lcd/aml_lcd.h b/include/linux/amlogic/media/vout/lcd/aml_lcd.h
+index 499382f2994b..ab655e5a8fbc 100644
+--- a/include/linux/amlogic/media/vout/lcd/aml_lcd.h
++++ b/include/linux/amlogic/media/vout/lcd/aml_lcd.h
+@@ -35,34 +35,18 @@
+ /*******************************************/
+ /*        LCD EXT CMD                      */
+ /*******************************************/
+-#define LCD_EXT_CMD_TYPE_CMD_DELAY     0x00
+-#define LCD_EXT_CMD_TYPE_CMD2_DELAY    0x01  /* for i2c device 2nd addr */
+-#define LCD_EXT_CMD_TYPE_CMD3_DELAY    0x02  /* for i2c device 3rd addr */
+-#define LCD_EXT_CMD_TYPE_CMD4_DELAY    0x03  /* for i2c device 4th addr */
+-#define LCD_EXT_CMD_TYPE_NONE          0x10
+-#define LCD_EXT_CMD_TYPE_CMD_BIN2      0xa0  /* with reg offset and data_len*/
+-#define LCD_EXT_CMD_TYPE_CMD2_BIN2     0xa1  /* for i2c device 2nd addr */
+-#define LCD_EXT_CMD_TYPE_CMD3_BIN2     0xa2  /* for i2c device 3rd addr */
+-#define LCD_EXT_CMD_TYPE_CMD4_BIN2     0xa3  /* for i2c device 4th addr */
+-#define LCD_EXT_CMD_TYPE_CMD_BIN       0xb0
+-#define LCD_EXT_CMD_TYPE_CMD2_BIN      0xb1  /* for i2c device 2nd addr */
+-#define LCD_EXT_CMD_TYPE_CMD3_BIN      0xb2  /* for i2c device 3rd addr */
+-#define LCD_EXT_CMD_TYPE_CMD4_BIN      0xb3  /* for i2c device 4th addr */
+-#define LCD_EXT_CMD_TYPE_CMD           0xc0
+-#define LCD_EXT_CMD_TYPE_CMD2          0xc1  /* for i2c device 2nd addr */
+-#define LCD_EXT_CMD_TYPE_CMD3          0xc2  /* for i2c device 3rd addr */
+-#define LCD_EXT_CMD_TYPE_CMD4          0xc3  /* for i2c device 4th addr */
+-#define LCD_EXT_CMD_TYPE_CMD_BIN_DATA  0xd0 /* without auto fill reg addr 0x0 */
+-#define LCD_EXT_CMD_TYPE_CMD2_BIN_DATA 0xd1 /* for i2c device 2nd addr */
+-#define LCD_EXT_CMD_TYPE_CMD3_BIN_DATA 0xd2 /* for i2c device 3rd addr */
+-#define LCD_EXT_CMD_TYPE_CMD4_BIN_DATA 0xd3 /* for i2c device 4th addr */
+-#define LCD_EXT_CMD_TYPE_GPIO          0xf0
+-#define LCD_EXT_CMD_TYPE_CHECK         0xfc
+-#define LCD_EXT_CMD_TYPE_DELAY         0xfd
+-#define LCD_EXT_CMD_TYPE_END           0xff
+-
+-#define LCD_EXT_CMD_SIZE_DYNAMIC       0xff
+-#define LCD_EXT_DYNAMIC_SIZE_INDEX     1
++#define LCD_EXT_CMD_TYPE_CMD_DELAY    0x00
++#define LCD_EXT_CMD_TYPE_CMD2_DELAY   0x01  /* for i2c device 2nd addr */
++#define LCD_EXT_CMD_TYPE_NONE         0x10
++#define LCD_EXT_CMD_TYPE_CMD          0xc0
++#define LCD_EXT_CMD_TYPE_CMD2         0xc1  /* for i2c device 2nd addr */
++#define LCD_EXT_CMD_TYPE_GPIO         0xf0
++#define LCD_EXT_CMD_TYPE_CHECK        0xfc
++#define LCD_EXT_CMD_TYPE_DELAY        0xfd
++#define LCD_EXT_CMD_TYPE_END          0xff
++
++#define LCD_EXT_CMD_SIZE_DYNAMIC      0xff
++#define LCD_EXT_DYNAMIC_SIZE_INDEX    1
+ 
+ 
+ #endif
+diff --git a/include/linux/amlogic/media/vout/lcd/aml_ldim.h b/include/linux/amlogic/media/vout/lcd/aml_ldim.h
+index ee59e9df0951..c066b0539e6e 100644
+--- a/include/linux/amlogic/media/vout/lcd/aml_ldim.h
++++ b/include/linux/amlogic/media/vout/lcd/aml_ldim.h
+@@ -34,26 +34,10 @@
+ #define LD_DATA_MIN     10
+ #define LD_DATA_MAX     0xfff
+ 
+-/* **********************************
+- * IOCTL define
+- * **********************************
+- */
+ #define _VE_LDIM  'C'
+-#define AML_LDIM_IOC_NR_GET_INFO	0x51
+-#define AML_LDIM_IOC_NR_SET_INFO	0x52
+-#define AML_LDIM_IOC_NR_GET_REMAP_INFO	0x53
+-#define AML_LDIM_IOC_NR_SET_REMAP_INFO	0x54
+ 
+-#define AML_LDIM_IOC_CMD_GET_INFO \
+-	_IOR(_VE_LDIM, AML_LDIM_IOC_NR_GET_INFO, struct aml_ldim_info_s)
+-#define AML_LDIM_IOC_CMD_SET_INFO \
+-	_IOW(_VE_LDIM, AML_LDIM_IOC_NR_SET_INFO, struct aml_ldim_info_s)
+-#define AML_LDIM_IOC_CMD_GET_REMAP_INFO \
+-	_IOR(_VE_LDIM, AML_LDIM_IOC_NR_GET_REMAP_INFO, \
+-	     struct aml_ldim_remap_info_s)
+-#define AML_LDIM_IOC_CMD_SET_REMAP_INFO \
+-	_IOW(_VE_LDIM, AML_LDIM_IOC_NR_SET_REMAP_INFO, \
+-	     struct aml_ldim_remap_info_s)
++/* VPP.ldim IOCTL command list */
++#define LDIM_IOC_PARA  _IOW(_VE_LDIM, 0x50, struct ldim_param_s)
+ 
+ enum ldim_dev_type_e {
+ 	LDIM_DEV_TYPE_NORMAL = 0,
+@@ -62,88 +46,19 @@ enum ldim_dev_type_e {
+ 	LDIM_DEV_TYPE_MAX,
+ };
+ 
+-struct aml_ldim_info_s {
+-	unsigned int func_en;
+-	unsigned int remapping_en;
+-	unsigned int alpha;
+-	unsigned int LPF_method;
+-	unsigned int lpf_gain;
+-	unsigned int lpf_res;
+-	unsigned int side_blk_diff_th;
+-	unsigned int bbd_th;
+-	unsigned int boost_gain;
+-	unsigned int rgb_base;
+-	unsigned int Ld_remap_bypass;
+-	unsigned int LD_TF_STEP_TH;
+-	unsigned int TF_BLK_FRESH_BL;
+-	unsigned int TF_FRESH_BL;
+-	unsigned int fw_LD_ThTF_l;
+-	unsigned int fw_rgb_diff_th;
+-	unsigned int fw_ld_thist;
+-	unsigned int fw_ld_blest_acmode;
+-	unsigned int bl_remap_curve[16];
+-	unsigned int fw_ld_whist[16];
+-};
+-
+-struct aml_ldim_remap_info_s {
+-	unsigned int reg_LD_BackLit_Xtlk;
+-	unsigned int reg_LD_BackLit_mode;
+-	unsigned int reg_LD_Reflect_Hnum;
+-	unsigned int reg_LD_Reflect_Vnum;
+-	unsigned int reg_LD_BkLit_curmod;
+-	unsigned int reg_LD_BkLUT_Intmod;
+-	unsigned int reg_LD_BkLit_Intmod;
+-	unsigned int reg_LD_BkLit_LPFmod;
+-	unsigned int reg_LD_BkLit_Celnum;
+-	unsigned int reg_LD_Reflect_Hdgr[20];
+-	unsigned int reg_LD_Reflect_Vdgr[20];
+-	unsigned int reg_LD_Reflect_Xdgr[4];
+-	unsigned int reg_LD_Vgain;
+-	unsigned int reg_LD_Hgain;
+-	unsigned int reg_LD_Litgain;
+-	unsigned int reg_LD_Litshft;
+-	unsigned int reg_LD_BkLit_valid[32];
+-	unsigned int reg_LD_LUT_VHk_pos[32];
+-	unsigned int reg_LD_LUT_VHk_neg[32];
+-	unsigned int reg_LD_LUT_HHk[32];
+-	unsigned int reg_LD_LUT_VHo_pos[32];
+-	unsigned int reg_LD_LUT_VHo_neg[32];
+-	unsigned int reg_LD_LUT_VHo_LS;
+-	unsigned int reg_LD_RGBmapping_demo;
+-	unsigned int reg_LD_R_LUT_interp_mode;
+-	unsigned int reg_LD_G_LUT_interp_mode;
+-	unsigned int reg_LD_B_LUT_interp_mode;
+-	unsigned int reg_LD_LUT_Hdg_LEXT;
+-	unsigned int reg_LD_LUT_Vdg_LEXT;
+-	unsigned int reg_LD_LUT_VHk_LEXT;
+-	unsigned int Reg_LD_remap_LUT[16][32];
+-};
+-
+ struct ldim_config_s {
+ 	unsigned short hsize;
+ 	unsigned short vsize;
+-	unsigned char hist_row;
+-	unsigned char hist_col;
++	unsigned char row;
++	unsigned char col;
+ 	unsigned char bl_mode;
+-	unsigned char func_en;
+-	unsigned char remap_en;
++	unsigned char bl_en;
+ 	unsigned char hvcnt_bypass;
+-	unsigned char dev_index;
+-	struct aml_ldim_info_s *ldim_info;
+-	struct aml_ldim_remap_info_s *remap_info;
+-};
+-
+-struct ldim_profile_s {
+-	unsigned int ld_profile_mode;
+-	unsigned int ld_lut_hdg[32];
+-	unsigned int ld_lut_vdg[32];
+-	unsigned int ld_lut_vhk[32];
+ };
+ 
+ #define LDIM_INIT_ON_MAX     300
+ #define LDIM_INIT_OFF_MAX    20
+ struct ldim_dev_config_s {
+-	unsigned char index;
+ 	char name[20];
+ 	char pinmux_name[20];
+ 	unsigned char type;
+@@ -155,11 +70,7 @@ struct ldim_dev_config_s {
+ 	int lamp_err_gpio;
+ 	unsigned char fault_check;
+ 	unsigned char write_check;
+-	unsigned char device_count;
+-	unsigned char pinmux_flag;
+ 
+-	unsigned int blk_row;
+-	unsigned int blk_col;
+ 	unsigned int dim_min;
+ 	unsigned int dim_max;
+ 
+@@ -173,89 +84,29 @@ struct ldim_dev_config_s {
+ 	struct bl_pwm_config_s ldim_pwm_config;
+ 	struct bl_pwm_config_s analog_pwm_config;
+ 
+-	unsigned short bl_zone_num;
++	unsigned short bl_regnum;
+ 	unsigned short bl_mapping[LD_BLKREGNUM];
+ 
+-	struct ldim_profile_s *ld_profile;
+-
+ 	void (*dim_range_update)(void);
+-	int (*dev_reg_write)(unsigned int dev_id, unsigned char *buf,
+-			     unsigned int len);
+-	int (*dev_reg_read)(unsigned int dev_id, unsigned char *buf,
+-			    unsigned int len);
+-
+-	struct pinctrl *pin;
+-	struct device *dev;
+-	struct class *dev_class;
+-	struct spi_device *spi_dev;
+-	struct spi_board_info *spi_info;
+-};
+-
+-struct ldim_rmem_s {
+-	void *wr_mem_vaddr1;
+-	phys_addr_t wr_mem_paddr1;
+-	void *wr_mem_vaddr2;
+-	phys_addr_t wr_mem_paddr2;
+-	void *rd_mem_vaddr1;
+-	phys_addr_t rd_mem_paddr1;
+-	void *rd_mem_vaddr2;
+-	phys_addr_t rd_mem_paddr2;
+-	unsigned int wr_mem_size;
+-	unsigned int rd_mem_size;
++	int (*dev_reg_write)(unsigned char *buf, unsigned int len);
++	int (*dev_reg_read)(unsigned char *buf, unsigned int len);
+ };
+ 
+ /*******global API******/
+-#define LDIM_STATE_POWER_ON             BIT(0)
+-#define LDIM_STATE_FUNC_EN              BIT(1)
+-#define LDIM_STATE_REMAP_EN             BIT(2)
+-#define LDIM_STATE_REMAP_FORCE_UPDATE   BIT(3)
+-#define LDIM_STATE_LD_EN                BIT(4)
+-
+ struct aml_ldim_driver_s {
+ 	unsigned char valid_flag;
++	unsigned char dev_index;
+ 	unsigned char static_pic_flag;
+ 	unsigned char vsync_change_flag;
++	unsigned char pinmux_flag;
+ 
+-	unsigned char init_on_flag;
+-	unsigned char func_en;
+-	unsigned char remap_en;
+-	unsigned char demo_en;
+-	unsigned char func_bypass;  /* for lcd bist pattern */
+-	unsigned char ld_sel;  /* for gd bypass */
+-	unsigned char brightness_bypass;
+-	unsigned char test_en;
+-	unsigned char avg_update_en;
+-	unsigned char matrix_update_en;
+-	unsigned char remap_ram_flag;
+-	unsigned char remap_ram_step;
+-	unsigned char remap_mif_flag;
+-	unsigned char remap_init_flag;
+-	unsigned char remap_bypass_flag;
+-	unsigned char alg_en;
+-	unsigned char top_en;
+-	unsigned char hist_en;
+-	unsigned char load_db_en;
+-	unsigned char db_print_flag;
+-	unsigned char rdmif_flag;
+-	unsigned char litstep_en;
+-	unsigned int state;
+-
+-	unsigned int data_min;
+-	unsigned int data_max;
+-	unsigned int brightness_level;
+-	unsigned int litgain;
+-	unsigned int irq_cnt;
+-
+-	struct ldim_config_s *conf;
++	struct ldim_config_s *ldim_conf;
+ 	struct ldim_dev_config_s *ldev_conf;
+-	struct ldim_rmem_s *rmem;
+ 	unsigned int *hist_matrix;
+ 	unsigned int *max_rgb;
+-	unsigned short *test_matrix;
++	unsigned short *ldim_test_matrix;
+ 	unsigned short *local_ldim_matrix;
+ 	unsigned short *ldim_matrix_buf;
+-	unsigned int *array_tmp;
+-	struct ldim_fw_para_s *fw_para;
+ 	int (*init)(void);
+ 	int (*power_on)(void);
+ 	int (*power_off)(void);
+@@ -268,7 +119,37 @@ struct aml_ldim_driver_s {
+ 	int (*device_bri_check)(void);
+ 	void (*config_print)(void);
+ 	void (*test_ctrl)(int flag);
+-	void (*ld_sel_ctrl)(int flag);
++	struct pinctrl *pin;
++	struct device *dev;
++	struct spi_device *spi_dev;
++	struct spi_board_info *spi_info;
++};
++
++struct ldim_param_s {
++	/* beam model */
++	int rgb_base;
++	int boost_gain;
++	int lpf_res;
++	int fw_ld_th_sf; /* spatial filter threshold */
++	/* beam curve */
++	int ld_vgain;
++	int ld_hgain;
++	int ld_litgain;
++	int ld_lut_vdg_lext;
++	int ld_lut_hdg_lext;
++	int ld_lut_vhk_lext;
++	int ld_lut_hdg[32];
++	int ld_lut_vdg[32];
++	int ld_lut_vhk[32];
++	/* beam shape minor adjustment */
++	int ld_lut_vhk_pos[32];
++	int ld_lut_vhk_neg[32];
++	int ld_lut_hhk[32];
++	int ld_lut_vho_pos[32];
++	int ld_lut_vho_neg[32];
++	/* remapping */
++	int lit_idx_th;
++	int comp_gain;
+ };
+ 
+ extern struct aml_ldim_driver_s *aml_ldim_get_driver(void);
+diff --git a/include/linux/amlogic/media/vout/lcd/lcd_extern.h b/include/linux/amlogic/media/vout/lcd/lcd_extern.h
+index bd56be142ed1..1732a33d3d96 100644
+--- a/include/linux/amlogic/media/vout/lcd/lcd_extern.h
++++ b/include/linux/amlogic/media/vout/lcd/lcd_extern.h
+@@ -33,28 +33,21 @@ enum lcd_extern_type_e {
+ #define LCD_EXTERN_GPIO_NUM_MAX       6
+ #define LCD_EXTERN_INDEX_INVALID      0xff
+ #define LCD_EXTERN_NAME_LEN_MAX       30
+-struct lcd_ext_common_s {
+-	unsigned char key_valid;
+-	unsigned char i2c_bus;
+-	unsigned char i2c_sck_gpio;
+-	unsigned char i2c_sda_gpio;
+-	struct pinctrl *pin;
+-	unsigned char pinmux_valid;
+-	unsigned char pinmux_gpio_off;
+-	unsigned int pinmux_flag;
+-};
+-
+ struct lcd_extern_config_s {
+ 	unsigned char index;
+ 	char name[LCD_EXTERN_NAME_LEN_MAX];
+ 	enum lcd_extern_type_e type;
+ 	unsigned char status;
++	unsigned char pinmux_valid;
++	unsigned char pinmux_gpio_off;
++	unsigned char key_valid;
+ 	unsigned char addr_sel; /* internal used */
+ 
+ 	unsigned char i2c_addr;
+ 	unsigned char i2c_addr2;
+-	unsigned char i2c_addr3;
+-	unsigned char i2c_addr4;
++	unsigned char i2c_bus;
++	unsigned char i2c_sck_gpio;
++	unsigned char i2c_sda_gpio;
+ 
+ 	unsigned char spi_gpio_cs;
+ 	unsigned char spi_gpio_clk;
+@@ -69,7 +62,6 @@ struct lcd_extern_config_s {
+ 	unsigned int table_init_off_cnt;
+ 	unsigned char *table_init_on;
+ 	unsigned char *table_init_off;
+-	struct lcd_ext_common_s *common_config;
+ };
+ 
+ /* global API */
+@@ -79,6 +71,8 @@ struct aml_lcd_extern_driver_s {
+ 	int (*reg_write)(unsigned char *buf, unsigned int len);
+ 	int (*power_on)(void);
+ 	int (*power_off)(void);
++	struct pinctrl *pin;
++	unsigned int pinmux_flag;
+ };
+ 
+ #define LCD_EXT_I2C_DEV_MAX    10
+@@ -88,6 +82,6 @@ struct aml_lcd_extern_i2c_dev_s {
+ };
+ 
+ extern struct aml_lcd_extern_driver_s *aml_lcd_extern_get_driver(int index);
+-void lcd_extern_index_lut_add(int index);
++
+ #endif
+ 
+diff --git a/include/linux/amlogic/media/vout/lcd/lcd_notify.h b/include/linux/amlogic/media/vout/lcd/lcd_notify.h
+index 69691e1f968f..adffaf0ed35b 100644
+--- a/include/linux/amlogic/media/vout/lcd/lcd_notify.h
++++ b/include/linux/amlogic/media/vout/lcd/lcd_notify.h
+@@ -60,6 +60,11 @@
+ 				LCD_EVENT_BL_OFF | LCD_EVENT_IF_OFF)
+ #define LCD_EVENT_UNPREPARE         (LCD_EVENT_ENCL_OFF)
+ 
++/* lcd backlight index select */
++#define LCD_EVENT_BACKLIGHT_SEL     (1 << 8)
++/* lcd backlight pwm_vs vfreq change occurred */
++#define LCD_EVENT_BACKLIGHT_UPDATE  (1 << 9)
++
+ #define LCD_EVENT_GAMMA_UPDATE      (1 << 10)
+ #define LCD_EVENT_EXTERN_SEL        (1 << 11)
+ 
+@@ -75,24 +80,9 @@
+ #define LCD_VLOCK_PARAM_BIT_VALID   (1 << 0)
+ #define LCD_EVENT_VLOCK_PARAM       (1 << 16)
+ 
+-/* lcd backlight index select */
+-#define LCD_EVENT_BACKLIGHT_SEL     BIT(24)
+-/* lcd backlight pwm_vs vfreq change occurred */
+-#define LCD_EVENT_BACKLIGHT_UPDATE  BIT(25)
+-/* lcd backlight brightness update by global dimming */
+-#define LCD_EVENT_BACKLIGHT_GD_DIM  BIT(26)
+-/* lcd backlight brightness on/off by global dimming */
+-#define LCD_EVENT_BACKLIGHT_GD_SEL  BIT(27)
+-/* lcd backlight brightness on/off by local dimming */
+-#define LCD_EVENT_BACKLIGHT_LD_SEL  BIT(28)
+ 
+-/* blocking notify */
+-int aml_lcd_notifier_register(struct notifier_block *nb);
+-int aml_lcd_notifier_unregister(struct notifier_block *nb);
+-int aml_lcd_notifier_call_chain(unsigned long event, void *v);
+-/* atomic notify */
+-int aml_lcd_atomic_notifier_register(struct notifier_block *nb);
+-int aml_lcd_atomic_notifier_unregister(struct notifier_block *nb);
+-int aml_lcd_atomic_notifier_call_chain(unsigned long event, void *v);
++extern int aml_lcd_notifier_register(struct notifier_block *nb);
++extern int aml_lcd_notifier_unregister(struct notifier_block *nb);
++extern int aml_lcd_notifier_call_chain(unsigned long event, void *v);
+ 
+ #endif /* _INC_LCD_NOTIFY_H_ */
+diff --git a/include/linux/amlogic/media/vout/lcd/lcd_tcon_data.h b/include/linux/amlogic/media/vout/lcd/lcd_tcon_data.h
+deleted file mode 100644
+index ed740c668901..000000000000
+--- a/include/linux/amlogic/media/vout/lcd/lcd_tcon_data.h
++++ /dev/null
+@@ -1,256 +0,0 @@
+-/* include/linux/amlogic/media/vout/lcd/lcd_tcon_data.h
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the named License,
+- * or any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+- * GNU General Public License for more details.
+- *
+- */
+-
+-#ifndef _INC_AML_LCD_TCON_DATA_H
+-#define _INC_AML_LCD_TCON_DATA_H
+-
+-/* for data block header flag */
+-#define LCD_TCON_DATA_VALID_VAC      BIT(0)
+-#define LCD_TCON_DATA_VALID_DEMURA   BIT(1)
+-#define LCD_TCON_DATA_VALID_ACC      BIT(2)
+-#define LCD_TCON_DATA_VALID_DITHER   BIT(3)
+-#define LCD_TCON_DATA_VALID_OD       BIT(4)
+-#define LCD_TCON_DATA_VALID_LOD      BIT(5)
+-
+-/* for tconless data format */
+-/* for tconless data block type */
+-#define LCD_TCON_DATA_BLOCK_TYPE_NONE           0x00
+-#define LCD_TCON_DATA_BLOCK_TYPE_DEMURA_SET     0x01
+-#define LCD_TCON_DATA_BLOCK_TYPE_DEMURA_LUT     0x02
+-#define LCD_TCON_DATA_BLOCK_TYPE_ACC_LUT        0x03
+-#define LCD_TCON_DATA_BLOCK_TYPE_DITHER_LUT     0x04
+-#define LCD_TCON_DATA_BLOCK_TYPE_OD_LUT         0x05
+-#define LCD_TCON_DATA_BLOCK_TYPE_LOD_LUT        0x06
+-#define LCD_TCON_DATA_BLOCK_TYPE_VAC            0x11
+-#define LCD_TCON_DATA_BLOCK_TYPE_EXT            0xe0 /* pmu */
+-#define LCD_TCON_DATA_BLOCK_TYPE_MAX            0xff
+-
+-/* for tconless data block part type */
+-#define LCD_TCON_DATA_PART_TYPE_WR_N            0xd0
+-#define LCD_TCON_DATA_PART_TYPE_WR_DDR          0xdd
+-#define LCD_TCON_DATA_PART_TYPE_WR_MASK         0xb0
+-#define LCD_TCON_DATA_PART_TYPE_RD_MASK         0xab
+-#define LCD_TCON_DATA_PART_TYPE_CHK_WR_MASK     0xcb
+-#define LCD_TCON_DATA_PART_TYPE_CHK_EXIT        0xce
+-#define LCD_TCON_DATA_PART_TYPE_PARAM           0xf0 /* only for tool */
+-#define LCD_TCON_DATA_PART_TYPE_CONTROL         0xfc
+-#define LCD_TCON_DATA_PART_TYPE_DELAY           0xfd
+-
+-#define LCD_TCON_DATA_PART_FLAG_TUNINTG_LUT     0x00
+-#define LCD_TCON_DATA_PART_FLAG_FIXED_LUT       0x10
+-#define LCD_TCON_DATA_PART_FLAG_TUNINTG_REG     0x01
+-#define LCD_TCON_DATA_PART_FLAG_FIXED_REG       0x11
+-#define LCD_TCON_DATA_PART_FLAG_TUNINTG_PARAM   0x0f
+-#define LCD_TCON_DATA_PART_FLAG_FIXED_PARAM     0x1f
+-
+-#define LCD_TCON_DATA_BLOCK_HEADER_SIZE         64
+-#define LCD_TCON_DATA_BLOCK_NAME_SIZE           36
+-#define LCD_TCON_DATA_PART_NAME_SIZE            48
+-#define LCD_TCON_INIT_BIN_NAME_SIZE             28
+-#define LCD_TCON_INIT_BIN_VERSION_SIZE          8
+-
+-/* tcon data control defaine */
+-#define LCD_TCON_DATA_CTRL_FLAG_MULTI           BIT(0)
+-
+-#define LCD_TCON_DATA_CTRL_DEFAULT              0x00
+-#define LCD_TCON_DATA_CTRL_MULTI_VFREQ          0x01
+-#define LCD_TCON_DATA_CTRL_MULTI_BL_LEVEL       0x11
+-#define LCD_TCON_DATA_CTRL_MULTI_BL_PWM_DUTY    0x12
+-
+-struct lcd_tcon_init_block_header_s {
+-	unsigned int crc32;
+-	unsigned int reserved;
+-	unsigned int block_size;
+-	unsigned short header_size;
+-	unsigned short reserved1;
+-	unsigned short block_type;
+-	unsigned short block_ctrl;
+-	unsigned char reserved2[5];
+-	unsigned char data_byte_width;
+-	unsigned short chipid;
+-	unsigned char name[LCD_TCON_INIT_BIN_NAME_SIZE];
+-	char version[LCD_TCON_INIT_BIN_VERSION_SIZE];
+-};
+-
+-struct lcd_tcon_data_block_header_s {
+-	unsigned int crc32;
+-	unsigned int raw_data_check;/* crc */
+-	unsigned int block_size;
+-	unsigned short header_size;
+-	unsigned short ext_header_size;
+-	unsigned short block_type;
+-	unsigned short block_ctrl;
+-	unsigned int block_flag;
+-	unsigned short init_priority;
+-	unsigned short chipid;
+-	unsigned char name[LCD_TCON_DATA_BLOCK_NAME_SIZE];
+-};
+-
+-struct lcd_tcon_data_block_ext_header_s {
+-	unsigned short part_cnt;
+-	unsigned char part_mapping_byte;
+-	unsigned char reserved[13];
+-};
+-
+-#define LCD_TCON_DATA_PART_CTRL_SIZE_PRE    (LCD_TCON_DATA_PART_NAME_SIZE + 12)
+-struct lcd_tcon_data_part_ctrl_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned short ctrl_data_flag;
+-	unsigned short ctrl_sub_type;
+-	unsigned short data_byte_width;
+-	unsigned short data_cnt;
+-};
+-
+-#define LCD_TCON_DATA_PART_WR_N_SIZE_PRE    (LCD_TCON_DATA_PART_NAME_SIZE + 12)
+-struct lcd_tcon_data_part_wr_n_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned char reg_addr_byte;
+-	unsigned char reg_data_byte;
+-	unsigned char reg_inc;
+-	unsigned char reg_cnt;
+-	unsigned int data_cnt;
+-};
+-
+-#define LCD_TCON_DATA_PART_WR_DDR_SIZE_PRE  (LCD_TCON_DATA_PART_NAME_SIZE + 12)
+-struct lcd_tcon_data_part_wr_ddr_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned short axi_buf_id;
+-	unsigned short data_byte;
+-	unsigned int data_cnt;
+-};
+-
+-#define LCD_TCON_DATA_PART_WR_MASK_SIZE_PRE   (LCD_TCON_DATA_PART_NAME_SIZE + 6)
+-struct lcd_tcon_data_part_wr_mask_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned char reg_addr_byte;
+-	unsigned char reg_data_byte;
+-};
+-
+-#define LCD_TCON_DATA_PART_RD_MASK_SIZE_PRE  (LCD_TCON_DATA_PART_NAME_SIZE + 6)
+-struct lcd_tcon_data_part_rd_mask_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned char reg_addr_byte;
+-	unsigned char reg_data_byte;
+-};
+-
+-#define LCD_TCON_DATA_PART_CHK_WR_MASK_SIZE_PRE \
+-	(LCD_TCON_DATA_PART_NAME_SIZE + 9)
+-struct lcd_tcon_data_part_chk_wr_mask_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned char reg_chk_addr_byte;
+-	unsigned char reg_chk_data_byte;
+-	unsigned char reg_wr_addr_byte;
+-	unsigned char reg_wr_data_byte;
+-	unsigned char data_chk_cnt;
+-};
+-
+-#define LCD_TCON_DATA_PART_CHK_EXIT_SIZE_PRE \
+-	(LCD_TCON_DATA_PART_NAME_SIZE + 6)
+-struct lcd_tcon_data_part_chk_exit_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned char reg_addr_byte;
+-	unsigned char reg_data_byte;
+-};
+-
+-#define LCD_TCON_DATA_PART_DELAY_SIZE    (LCD_TCON_DATA_PART_NAME_SIZE + 8)
+-struct lcd_tcon_data_part_delay_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned int delay_us;
+-};
+-
+-#define LCD_TCON_DATA_PART_PARAM_SIZE_PRE    (LCD_TCON_DATA_PART_NAME_SIZE + 8)
+-struct lcd_tcon_data_part_param_s {
+-	char name[LCD_TCON_DATA_PART_NAME_SIZE];
+-	unsigned short part_id;
+-	unsigned char tuning_flag;
+-	unsigned char part_type;
+-	unsigned int param_size;
+-};
+-
+-union lcd_tcon_data_part_u {
+-	struct lcd_tcon_data_part_ctrl_s *ctrl;
+-	struct lcd_tcon_data_part_wr_n_s *wr_n;
+-	struct lcd_tcon_data_part_wr_ddr_s *wr_ddr;
+-	struct lcd_tcon_data_part_wr_mask_s *wr_mask;
+-	struct lcd_tcon_data_part_rd_mask_s *rd_mask;
+-	struct lcd_tcon_data_part_chk_wr_mask_s *chk_wr_mask;
+-	struct lcd_tcon_data_part_chk_exit_s *chk_exit;
+-	struct lcd_tcon_data_part_delay_s *delay;
+-	struct lcd_tcon_data_part_param_s *param;
+-};
+-
+-#define LCD_UKEY_TCON_SPI_BLOCK_SIZE_PRE          20
+-struct lcd_tcon_spi_block_s {
+-	unsigned short data_type;
+-	unsigned short data_index; /* tcon_data_index, equal to init priority */
+-	unsigned int data_flag;
+-	unsigned int spi_offset;
+-	unsigned int spi_size;
+-	unsigned int param_cnt;
+-
+-	unsigned int data_raw_check; //crc...
+-	unsigned int data_temp_size;
+-	unsigned int data_new_size;
+-
+-	unsigned int *param;
+-	unsigned char *raw_buf;
+-	unsigned char *temp_buf;
+-	unsigned char *new_buf;
+-};
+-
+-struct lcd_tcon_spi_s {
+-	unsigned short version;
+-	unsigned int block_cnt;
+-	unsigned int init_flag;
+-	struct lcd_tcon_spi_block_s **spi_block;
+-
+-	unsigned char *ext_buf;
+-	unsigned int ext_init_on_cnt;
+-	unsigned int ext_init_off_cnt;
+-
+-	int (*data_read)(struct lcd_tcon_spi_block_s *spi_block);
+-	int (*data_conv)(struct lcd_tcon_spi_block_s *spi_block);
+-};
+-
+-struct lcd_tcon_spi_s *lcd_tcon_spi_get(void);
+-
+-unsigned int lcd_tcon_data_size_align(unsigned int size);
+-unsigned char lcd_tcon_checksum(unsigned char *buf, unsigned int len);
+-unsigned char lcd_tcon_lrc(unsigned char *buf, unsigned int len);
+-
+-#endif /* _INC_AML_LCD_TCON_DATA_H */
+diff --git a/include/linux/amlogic/media/vout/lcd/lcd_unifykey.h b/include/linux/amlogic/media/vout/lcd/lcd_unifykey.h
+index fc9f6cf7a25a..c27f57fe2be4 100644
+--- a/include/linux/amlogic/media/vout/lcd/lcd_unifykey.h
++++ b/include/linux/amlogic/media/vout/lcd/lcd_unifykey.h
+@@ -17,9 +17,8 @@
+ 
+ #ifndef _INC_AML_LCD_UNIFYKEY_H__
+ #define _INC_AML_LCD_UNIFYKEY_H__
+-#include <linux/amlogic/media/vout/lcd/lcd_tcon_data.h>
+ 
+-#define LCD_UNIFYKEY_WAIT_TIMEOUT      2000
++#define LCD_UNIFYKEY_WAIT_TIMEOUT      500
+ #define LCD_UNIFYKEY_RETRY_INTERVAL    20   /* ms */
+ 
+ /* declare external unifykey function */
+@@ -255,7 +254,6 @@ extern int lcd_unifykey_header_check(unsigned char *buf,
+ 		struct aml_lcd_unifykey_header_s *header);
+ extern int lcd_unifykey_get(char *key_name,
+ 		unsigned char *buf, int *len);
+-int lcd_unifykey_get_tcon(char *key_name, unsigned char *buf, int *len);
+ extern int lcd_unifykey_check_no_header(char *key_name);
+ extern int lcd_unifykey_get_no_header(char *key_name,
+ 		unsigned char *buf, int *len);
+diff --git a/include/linux/amlogic/media/vout/lcd/lcd_vout.h b/include/linux/amlogic/media/vout/lcd/lcd_vout.h
+index 40ff3f187ff8..fb38bf5c4edc 100644
+--- a/include/linux/amlogic/media/vout/lcd/lcd_vout.h
++++ b/include/linux/amlogic/media/vout/lcd/lcd_vout.h
+@@ -23,7 +23,6 @@
+ #include <linux/pinctrl/consumer.h>
+ #include <linux/amlogic/media/vout/vout_notify.h>
+ #include <linux/amlogic/iomap.h>
+-#include <linux/amlogic/media/vout/lcd/lcd_tcon_data.h>
+ 
+ extern void lcd_vlock_m_update(unsigned int vlock_m);
+ extern void lcd_vlock_frac_update(unsigned int vlock_farc);
+@@ -63,7 +62,6 @@ extern unsigned char lcd_debug_print_flag;
+ 
+ /* ******** clk_ctrl ******** */
+ #define CLK_CTRL_LEVEL              28 /* [30:28] */
+-#define CLK_CTRL_FRAC_SHIFT         24 /* [24] */
+ #define CLK_CTRL_FRAC               0  /* [18:0] */
+ 
+ /* **********************************
+@@ -96,8 +94,6 @@ enum lcd_chip_e {
+ 	LCD_CHIP_TL1,   /* 7 */
+ 	LCD_CHIP_SM1,	/* 8 */
+ 	LCD_CHIP_TM2,   /* 9 */
+-	LCD_CHIP_T5,   /* 10 */
+-	LCD_CHIP_T5D,   /* 11 */
+ 	LCD_CHIP_MAX,
+ };
+ 
+@@ -122,7 +118,6 @@ struct lcd_basic_s {
+ 	char model_name[MOD_LEN_MAX];
+ 	enum lcd_type_e lcd_type;
+ 	unsigned short lcd_bits;
+-	unsigned char pinmux_flag;
+ 
+ 	unsigned short h_active;    /* Horizontal display area */
+ 	unsigned short v_active;    /* Vertical display area */
+@@ -354,7 +349,7 @@ enum p2p_type_e {
+ };
+ 
+ struct p2p_config_s {
+-	unsigned int p2p_type; /* bit[4:0] for type, bit[5] for vcm flag */
++	unsigned int p2p_type;
+ 	unsigned int lane_num;
+ 	unsigned int channel_sel0;
+ 	unsigned int channel_sel1;
+@@ -385,7 +380,6 @@ enum lcd_power_type_e {
+ 	LCD_POWER_TYPE_EXTERN,
+ 	LCD_POWER_TYPE_WAIT_GPIO,
+ 	LCD_POWER_TYPE_CLK_SS,
+-	LCD_POWER_TYPE_TCON_SPI_DATA_LOAD,
+ 	LCD_POWER_TYPE_MAX,
+ };
+ 
+@@ -438,16 +432,11 @@ struct lcd_power_ctrl_s {
+ 	int power_off_step_max; /* internal use for debug */
+ };
+ 
+-#define LCD_INIT_LEVEL_NORMAL         0
+-#define LCD_INIT_LEVEL_PWR_OFF        1
+-#define LCD_INIT_LEVEL_KERNEL_ON      2
+-#define LCD_INIT_LEVEL_KERNEL_OFF     3
+-
+ struct lcd_boot_ctrl_s {
+ 	unsigned char lcd_type;	//bit[3:0]
+ 	unsigned char lcd_bits; //bit[7:4] bits:6 or 8
+ 	unsigned char advanced_flag;	//bit[15:8]
+-	unsigned char lcd_init_level;	//bit[19:18]
++	unsigned char lcd_init_level;	//bit[19]
+ 	unsigned char debug_print_flag;	//bit[23:20]
+ 	unsigned char debug_test_pattern;	//bit[27:24]
+ 	unsigned char debug_para_source;//bit[29:28]
+@@ -466,18 +455,17 @@ struct lcd_config_s {
+ 	struct lcd_optical_info_s optical_info;
+ 	struct lcd_control_config_s lcd_control;
+ 	struct lcd_power_ctrl_s *lcd_power;
++	struct lcd_boot_ctrl_s *lcd_boot_ctrl;
+ 	struct pinctrl *pin;
+-	unsigned char change_flag;
+ 	unsigned char pinmux_flag;
++	unsigned char change_flag;
+ 	unsigned char retry_enable_flag;
+ 	unsigned char retry_enable_cnt;
+-	unsigned char customer_pinmux;
+ };
+ 
+ struct lcd_duration_s {
+ 	unsigned int duration_num;
+ 	unsigned int duration_den;
+-	unsigned int frac;
+ };
+ 
+ #define LCD_STATUS_IF_ON      (1 << 0)
+@@ -485,13 +473,14 @@ struct lcd_duration_s {
+ #define LCD_STATUS_VMODE_ACTIVE  (1 << 2)
+ #define LCD_STATUS_ON         (LCD_STATUS_IF_ON | LCD_STATUS_ENCL_ON)
+ 
++#define LCD_MUTE_UPDATE       (1 << 4)
++#define LCD_TEST_UPDATE       (1 << 4)
++
+ #define LCD_VIU_SEL_NONE      0
+-#define EXTERN_MUL_MAX	      10
+ struct aml_lcd_drv_s {
+ 	char version[20];
+ 	struct lcd_data_s *data;
+ 	unsigned char lcd_mode;
+-	unsigned char lcd_pxp;
+ 	unsigned char lcd_status;
+ 	unsigned char lcd_key_valid;
+ 	unsigned char lcd_clk_path; /* 0=hpll, 1=gp0_pll */
+@@ -504,17 +493,14 @@ struct aml_lcd_drv_s {
+ 	unsigned char lcd_mute_flag;
+ 	unsigned char viu_sel;
+ 	unsigned char vsync_none_timer_flag;
+-	unsigned int extern_mul_index[EXTERN_MUL_MAX];
+ 
+ 	struct device *dev;
+ 	struct lcd_config_s *lcd_config;
+ 	struct vinfo_s *lcd_info;
+ 	struct class *lcd_debug_class;
+-	struct lcd_boot_ctrl_s *boot_ctrl;
+ 
+ 	int fr_auto_policy;
+ 	int fr_mode;
+-	int fr_duration;
+ 	struct lcd_duration_s std_duration;
+ 
+ 	int tcon_status;
+@@ -531,7 +517,7 @@ struct aml_lcd_drv_s {
+ 	void (*power_ctrl)(int status);
+ 
+ 	struct workqueue_struct *workqueue;
+-	struct work_struct lcd_probe_work;
++	struct delayed_work lcd_probe_delayed_work;
+ 	struct work_struct  lcd_resume_work;
+ 	struct resource *res_vsync_irq;
+ 	struct resource *res_vsync2_irq;
+@@ -539,11 +525,11 @@ struct aml_lcd_drv_s {
+ 	struct resource *res_tcon_irq;
+ 
+ 	struct mutex power_mutex;
+-	spinlock_t isr_lock; /* for mute and test isr */
+ };
+ 
+ extern struct aml_lcd_drv_s *aml_lcd_get_driver(void);
+ 
++
+ /* **********************************
+  * IOCTL define
+  * **********************************
+diff --git a/include/linux/amlogic/media/vout/lcd/ldim_alg.h b/include/linux/amlogic/media/vout/lcd/ldim_alg.h
+index 95c39c38a5d5..8f98e87528df 100644
+--- a/include/linux/amlogic/media/vout/lcd/ldim_alg.h
++++ b/include/linux/amlogic/media/vout/lcd/ldim_alg.h
+@@ -32,9 +32,7 @@
+ #define LD_BLKHMAX 32
+ #define LD_BLKVMAX 32
+ 
+-#define LD_BLKREGNUM   1536  /* maximum support 48*32*/
+-#define LD_NUM_PROFILE 8  //16
+-#define LD_NUM_PROFILE_TM2  16  //16
++#define LD_BLKREGNUM 384  /* maximum support 24*16*/
+ 
+ struct LDReg_s {
+ 	int reg_LD_pic_RowMax;            /*u13*/
+@@ -136,10 +134,10 @@ struct LDReg_s {
+ 	int reg_ldfw_sta_norm;
+ 	int reg_ldfw_sta_norm_rs;
+ 	int reg_ldfw_tf_enable;
+-	int reg_LD_LUT_Hdg_TXLX[8][LD_LUT_LEN];
+-	int reg_LD_LUT_Vdg_TXLX[8][LD_LUT_LEN];
+-	int reg_LD_LUT_VHk_TXLX[8][LD_LUT_LEN];
+-	int reg_LD_LUT_Id[LD_BLKREGNUM];
++	int reg_LD_LUT_Hdg_TXLX[8][32];
++	int reg_LD_LUT_Vdg_TXLX[8][32];
++	int reg_LD_LUT_VHk_TXLX[8][32];
++	int reg_LD_LUT_Id[16 * 24];
+ 	int reg_LD_LUT_Hdg_LEXT_TXLX[8];
+ 	int reg_LD_LUT_Vdg_LEXT_TXLX[8];
+ 	int reg_LD_LUT_VHk_LEXT_TXLX[8];
+@@ -192,7 +190,7 @@ struct LDReg_s {
+ 	 */
+ 	int reg_LD_Reflect_Vdgr[20];
+ 	/*20*u6:  cells 1~20 for V Gains of different dist of Top/Bot;*/
+-	int reg_LD_Reflect_Xdgr[6];     /*4*u6:*/
++	int reg_LD_Reflect_Xdgr[4];     /*4*u6:*/
+ 	int reg_LD_Vgain;               /*u12*/
+ 	int reg_LD_Hgain;               /*u12*/
+ 	int reg_LD_Litgain;             /*u12*/
+@@ -214,13 +212,13 @@ struct LDReg_s {
+ 	/* VHk positive and negative side gain, normalized to 128
+ 	 *	as "1" 20150428
+ 	 */
+-	int reg_LD_LUT_VHk_pos[LD_LUT_LEN];   /* u8*/
+-	int reg_LD_LUT_VHk_neg[LD_LUT_LEN];   /* u8*/
+-	int reg_LD_LUT_HHk[LD_LUT_LEN];
++	int reg_LD_LUT_VHk_pos[32];   /* u8*/
++	int reg_LD_LUT_VHk_neg[32];   /* u8*/
++	int reg_LD_LUT_HHk[32];
+ 	/* u8 side gain for LED direction hdist gain for different LED*/
+ 	/* VHo possitive and negative side offset, use with LS, (x<<LS)*/
+-	int reg_LD_LUT_VHo_pos[LD_LUT_LEN];   /* s8*/
+-	int reg_LD_LUT_VHo_neg[LD_LUT_LEN];   /* s8*/
++	int reg_LD_LUT_VHo_pos[32];   /* s8*/
++	int reg_LD_LUT_VHo_neg[32];   /* s8*/
+ 	int reg_LD_LUT_VHo_LS;/* u3:0~6,left shift bits of VH0_pos/neg*/
+ 	/* adding three cells for left boundary extend during
+ 	 *	Cubic interpolation
+@@ -271,16 +269,24 @@ struct FW_DAT_s {
+ 	unsigned int *TF_BL_alpha;
+ 	unsigned int *last_YUVsum;
+ 	unsigned int *last_RGBsum;
+-	unsigned int *last_sta1_maxrgb;
++	unsigned int *last_STA1_MaxRGB;
+ 	unsigned int *SF_BL_matrix;
+ 	unsigned int *TF_BL_matrix;
+ 	unsigned int *TF_BL_matrix_2;
+ };
+ 
+-struct fw_ctrl_config_s {
++struct ldim_fw_para_s {
++	/* header */
++	unsigned int para_ver;
++	unsigned int para_size;
++	char ver_str[20];
++	unsigned char ver_num;
++
++	unsigned char hist_col;
++	unsigned char hist_row;
++
+ 	unsigned int fw_LD_ThSF_l;
+ 	unsigned int fw_LD_ThTF_l;
+-	unsigned int fw_ld_thist; /* pre-calc gain */
+ 	unsigned int boost_gain; /*norm 256 to 1,T960 finally use*/
+ 	unsigned int TF_alpha; /*256;*/
+ 	unsigned int lpf_gain;  /* [0~128~256], norm 128 as 1*/
+@@ -313,62 +319,26 @@ struct fw_ctrl_config_s {
+ 	unsigned char bbd_detect_en;
+ 	unsigned char diff_blk_luma_en;
+ 
+-	unsigned char Sf_bypass;
+-	unsigned char Boost_light_bypass;
+-	unsigned char Lpf_bypass;
+-	unsigned char Ld_remap_bypass;
++	unsigned char Sf_bypass, Boost_light_bypass;
++	unsigned char Lpf_bypass, Ld_remap_bypass;
+ 	unsigned char black_frm;
+-	unsigned char black_frm_en;
+-	unsigned int black_frm_rgbmax_th;
+-	unsigned int black_frm_cnt_th;
+-
+-	unsigned char white_area_remap_en;
+-	unsigned int white_area;
+-	unsigned int white_lvl;
+-	unsigned int white_area_th_max;
+-	unsigned int white_area_th_min;
+-	unsigned int white_lvl_th_max;
+-	unsigned int white_lvl_th_min;
+-
+-	unsigned int fw_ld_blest_acmode;
+-	unsigned int min_bl_alpha;
+-	unsigned int glb_blend_alpha;
+-
+-	unsigned int sc_method;
+-	unsigned int sc_step;
+-};
+-
+-struct ldim_fw_para_s {
+-	/* header */
+-	unsigned int para_ver;
+-	unsigned int para_size;
+-	unsigned int fw_ctrl_size;
+-	char ver_str[20];
+-	unsigned char ver_num;
+-	unsigned char valid;
+-
+-	unsigned char hist_col;
+-	unsigned char hist_row;
+ 
+ 	/* for debug print */
+ 	unsigned char fw_hist_print;/*20180525*/
+ 	unsigned int fw_print_frequent;/*20180606,print every 8 frame*/
+ 	unsigned int Dbprint_lv;
+ 
+-	struct LDReg_s *nprm;
+-	struct FW_DAT_s *fdat;
++	struct LDReg_s *nPRM;
++	struct FW_DAT_s *FDat;
+ 	unsigned int *bl_remap_curve; /* size: 16 */
+-	unsigned int *fw_ld_whist;    /* size: 16 */
+-
+-	struct fw_ctrl_config_s *ctrl;
++	unsigned int *fw_LD_Whist;    /* size: 16 */
+ 
+ 	void (*fw_alg_frm)(struct ldim_fw_para_s *fw_para,
+ 		unsigned int *max_matrix, unsigned int *hist_matrix);
+ 	void (*fw_alg_para_print)(struct ldim_fw_para_s *fw_para);
+ };
+-
+ /* if struct ldim_fw_para_s changed, FW_PARA_VER must be update */
+-#define FW_PARA_VER    5
++#define FW_PARA_VER    1
+ 
+ extern struct ldim_fw_para_s *aml_ldim_get_fw_para(void);
+ 
 diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
 index 9116cb293c7d..0f1c150a1d9d 100644
 --- a/include/linux/clk-provider.h
