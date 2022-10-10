@@ -1,6 +1,6 @@
-From 24ed8561a193ef3c131f859756aa1b18e9a7dea0 Mon Sep 17 00:00:00 2001
+From a73d7e4d24c62f281937ba45bff72c1e186ab4b6 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Mon, 10 Oct 2022 13:56:10 +0800
+Date: Mon, 10 Oct 2022 14:09:53 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -11,6 +11,7 @@ Subject: [PATCH] OGU: introduce
  .../boot/dts/amlogic/meson64_gou_pmic.dtsi    |  474 +++
  arch/arm64/kernel/setup.c                     |    9 +-
  drivers/amlogic/media/osd/osd_fb.c            |  104 +-
+ .../vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c     |   10 +
  .../media/vout/lcd/lcd_extern/mipi_ST7701.c   |  106 +-
  .../media/vout/vout_serve/vout_serve.c        |   11 +
  drivers/amlogic/mmc/aml_sd_emmc.c             |   26 +-
@@ -45,7 +46,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 41 files changed, 14791 insertions(+), 286 deletions(-)
+ 42 files changed, 14801 insertions(+), 286 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -2304,6 +2305,34 @@ index 192948b9c0b9..2e64bc5a9225 100644
  	}
  #ifdef CONFIG_AMLOGIC_LEGACY_EARLY_SUSPEND
  	early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
+diff --git a/drivers/amlogic/media/vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c b/drivers/amlogic/media/vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c
+index c66d30e2d696..4c6d0c8971ad 100644
+--- a/drivers/amlogic/media/vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c
++++ b/drivers/amlogic/media/vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c
+@@ -68,6 +68,8 @@
+ #include "hdmi_tx_hdcp.h"
+ #include "hdmi_tx_calibration.h"
+ 
++#define CONFIG_ARCH_MESON64_ODROID_COMMON
++
+ #define HDMI_TX_COUNT 32
+ #define HDMI_TX_POOL_NUM  6
+ #define HDMI_TX_RESOURCE_NUM 4
+@@ -7309,6 +7311,14 @@ static int __init hdmitx_get_phy_idx(char *str)
+ 
+ __setup("phy_idx=", hdmitx_get_phy_idx);
+ 
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++void control_hdmiphy(bool on)
++{
++	hdmitx_device.hwop.cntlmisc(&hdmitx_device, MISC_TMDS_PHY_OP,
++			on ?  TMDS_PHY_ENABLE : TMDS_PHY_DISABLE);
++}
++#endif
++
+ MODULE_PARM_DESC(log_level, "\n log_level\n");
+ module_param(log_level, int, 0644);
+ 
 diff --git a/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c b/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
 index 15e0d7989ba8..a1c62d6f23f3 100644
 --- a/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
