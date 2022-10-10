@@ -1,6 +1,6 @@
-From 14dd2eff7744bb6a07c2065f541da20a8f1bc5e1 Mon Sep 17 00:00:00 2001
+From f17e130bfdbd60dfbf4763971cd41c9e56b3a474 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Mon, 10 Oct 2022 12:50:32 +0800
+Date: Mon, 10 Oct 2022 13:50:17 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -10,6 +10,7 @@ Subject: [PATCH] OGU: introduce
  .../boot/dts/amlogic/meson64_gou_panel.dtsi   |  214 +
  .../boot/dts/amlogic/meson64_gou_pmic.dtsi    |  474 +++
  arch/arm64/kernel/setup.c                     |    9 +-
+ drivers/amlogic/media/osd/osd_fb.c            |  103 +-
  .../media/vout/lcd/lcd_extern/mipi_ST7701.c   |  106 +-
  .../media/vout/vout_serve/vout_serve.c        |   11 +
  drivers/amlogic/mmc/aml_sd_emmc.c             |   26 +-
@@ -44,7 +45,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 40 files changed, 14688 insertions(+), 285 deletions(-)
+ 41 files changed, 14790 insertions(+), 286 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -1430,7 +1431,7 @@ index 000000000000..cd5c528a181e
 +};
 diff --git a/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi b/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
 new file mode 100755
-index 000000000000..8eb79d4b22e6
+index 000000000000..5ddb0eeab886
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
 @@ -0,0 +1,214 @@
@@ -1539,7 +1540,7 @@ index 000000000000..8eb79d4b22e6
 +
 +		extern_0{
 +			index = <0>;
-+			extern_name = "mipi_default";/*ST7701*/
++			extern_name = "mipi_ST7701";/*ST7701*/
 +			status = "okay";
 +			type = <2>; /* 0=i2c, 1=spi, 2=mipi */
 +			cmd_size = <0xff>;
@@ -2157,6 +2158,154 @@ index 5b15911709aa..e41f68ad0832 100644
  
  	name = of_flat_dt_get_machine_name();
  	if (!name)
+diff --git a/drivers/amlogic/media/osd/osd_fb.c b/drivers/amlogic/media/osd/osd_fb.c
+index 192948b9c0b9..e0028b30e46e 100644
+--- a/drivers/amlogic/media/osd/osd_fb.c
++++ b/drivers/amlogic/media/osd/osd_fb.c
+@@ -56,6 +56,8 @@
+ #ifdef CONFIG_AMLOGIC_VPU
+ #include <linux/amlogic/media/vpu/vpu.h>
+ #endif
++#include <linux/platform_data/emuelec.h>
++#define CONFIG_ARCH_MESON64_ODROID_COMMON
+ /* Local Headers */
+ #include "osd.h"
+ #include "osd_fb.h"
+@@ -388,6 +390,35 @@ struct ion_handle *fb_ion_handle[OSD_COUNT][OSD_MAX_BUF_NUM];
+ 
+ static int osd_cursor(struct fb_info *fbi, struct fb_cursor *var);
+ 
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++extern int  soft_cursor(struct fb_info *info, struct fb_cursor *cursor);
++
++static int osd_set_fb_var(int index, const struct vinfo_s *vinfo)
++{
++	if ((vinfo->width < 0) || (vinfo->height < 0)) {
++		pr_err("invalid vinfo\n");
++		return 1;
++	}
++
++	fb_def_var[index].xres = vinfo->width;
++	fb_def_var[index].yres = vinfo->height;
++	fb_def_var[index].xres_virtual = vinfo->width;
++	fb_def_var[index].yres_virtual = vinfo->height * 2;
++	fb_def_var[index].bits_per_pixel = 32;
++
++	return 0;
++}
++
++static void osd_set_fb_parameters(int index, const struct vinfo_s *vinfo)
++{
++	osd_set_free_scale_enable_hw(index, 0);
++	osd_set_free_scale_mode_hw(index, 1);
++	osd_set_free_scale_axis_hw(index, 0, 0, vinfo->width, vinfo->height);
++	osd_set_window_axis_hw(index, 0, 0, vinfo->width, vinfo->height);
++	osd_enable_hw(index, 1);
++}
++#endif /*CONFIG_ARCH_MESON64_ODROID_COMMON*/
++
+ phys_addr_t get_fb_rmem_paddr(int index)
+ {
+ 	if (index < 0 || index > 1)
+@@ -1913,12 +1944,48 @@ static int osd_release(struct fb_info *info, int arg)
+ 	return err;
+ }
+ 
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++extern void control_hdmiphy(bool on);
++
++static bool monitor_onoff_action;
++
++static int __init osd_setup_monitor_onoff(char *str)
++{
++	if (!strcmp(str, "true") || !strcmp(str, "1"))
++		monitor_onoff_action = true;
++	else
++		monitor_onoff_action = false;
++
++	return 0;
++}
++__setup("monitor_onoff=", osd_setup_monitor_onoff);
++#endif
++
+ int osd_blank(int blank_mode, struct fb_info *info)
+ {
+ 	osd_enable_hw(info->node, (blank_mode != 0) ? 0 : 1);
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++	if (!monitor_onoff_action)
++		return 0;
++
++	switch (blank_mode) {
++	case FB_BLANK_UNBLANK:
++		control_hdmiphy(true);
++		break;
++	case FB_BLANK_POWERDOWN:
++		control_hdmiphy(false);
++		break;
++	case FB_BLANK_NORMAL:
++	case FB_BLANK_HSYNC_SUSPEND:
++	case FB_BLANK_VSYNC_SUSPEND:
++	default:
++		break;
++	}
++#endif
++
+ static int osd_pan_display(struct fb_var_screeninfo *var,
+ 			   struct fb_info *fbi)
+ {
+@@ -4597,7 +4664,36 @@ static int osd_probe(struct platform_device *pdev)
+ 					&var_screeninfo[0], 5);
+ 			if (ret)
+ 				osd_log_info("not found display_size_default\n");
+-			else {
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++			else if  (emuelec_is_ogu) {
++                if (osd_set_fb_var(index, vinfo)) {
++					/* no available vinfo, set default */
++					fb_def_var[index].xres =
++						var_screeninfo[0];
++					fb_def_var[index].yres =
++						var_screeninfo[1];
++					fb_def_var[index].xres_virtual =
++						var_screeninfo[2];
++					fb_def_var[index].yres_virtual =
++						var_screeninfo[3];
++					fb_def_var[index].bits_per_pixel =
++						var_screeninfo[4];
++				}
++				pr_info("fb def : %d %d %d %d %d\n",
++					fb_def_var[index].xres,
++					fb_def_var[index].yres,
++					fb_def_var[index].xres_virtual,
++					fb_def_var[index].yres_virtual,
++					fb_def_var[index].bits_per_pixel);
++				pr_info("init fbdev bpp is:%d\n",
++					fb_def_var[index].bits_per_pixel);
++
++				if (fb_def_var[index].bits_per_pixel > 32)
++					fb_def_var[index].bits_per_pixel = 32;
++            } else {
++#else
++            else {
++#endif
+ 				fb_def_var[index].xres = var_screeninfo[0];
+ 				fb_def_var[index].yres = var_screeninfo[1];
+ 				fb_def_var[index].xres_virtual =
+@@ -4657,6 +4753,11 @@ static int osd_probe(struct platform_device *pdev)
+ 			for (i = 0; i < ARRAY_SIZE(osd_attrs_viu2); i++)
+ 			ret = device_create_file(fbi->dev, &osd_attrs_viu2[i]);
+ 		}
++
++#ifdef CONFIG_ARCH_MESON64_ODROID_COMMON
++		if (index == DEV_OSD0)
++			osd_set_fb_parameters(DEV_OSD0, vinfo);
++#endif
+ 	}
+ #ifdef CONFIG_AMLOGIC_LEGACY_EARLY_SUSPEND
+ 	early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
 diff --git a/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c b/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
 index 15e0d7989ba8..a1c62d6f23f3 100644
 --- a/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
@@ -14460,14 +14609,14 @@ index 6d435a3c06bc..b433c7359734 100644
 +#endif /* __LINUX_REGULATOR_rk808_H */
 diff --git a/include/linux/platform_data/emuelec.h b/include/linux/platform_data/emuelec.h
 new file mode 100644
-index 000000000000..c1a7edfae293
+index 000000000000..5398a0e82cfb
 --- /dev/null
 +++ b/include/linux/platform_data/emuelec.h
 @@ -0,0 +1,19 @@
 +#ifndef __EMUELEC_BOARD_H
 +#define __EMUELEC_BOARD_H
 +
-+// #include <linux/types.h>
++#include <linux/types.h>
 +
 +// #define EMUELEC_BOARD_GENERIC   0x00000000U
 +// #define EMUELEC_BOARD_OGU       0x00000001U
