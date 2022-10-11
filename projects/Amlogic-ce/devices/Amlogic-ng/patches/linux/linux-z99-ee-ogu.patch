@@ -1,11 +1,11 @@
-From 87b025440ab6935bc1cf5887ebf9576eede751db Mon Sep 17 00:00:00 2001
+From 8f5e47dc243d5813c1c74f77ec47fd4ca9c825f9 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Tue, 11 Oct 2022 07:23:26 +0800
+Date: Tue, 11 Oct 2022 08:27:29 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
  arch/arm64/boot/dts/amlogic/Makefile          |    1 +
- .../amlogic/g12b_s922x_odroid_go_ultra.dts    | 1124 +++++
+ .../amlogic/g12b_s922x_odroid_go_ultra.dts    | 1126 +++++
  .../boot/dts/amlogic/meson64_gou_joypad.dtsi  |  218 +
  .../boot/dts/amlogic/meson64_gou_panel.dtsi   |  214 +
  .../boot/dts/amlogic/meson64_gou_pmic.dtsi    |  474 +++
@@ -47,7 +47,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 43 files changed, 14729 insertions(+), 297 deletions(-)
+ 43 files changed, 14731 insertions(+), 297 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -78,10 +78,10 @@ index 3de9711b12b7..fa5a5e6fb0d4 100644
  dtb-$(CONFIG_ARM64) += g12b_s922x_ugoos_am6_rev_a_2g.dtb
 diff --git a/arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts b/arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
 new file mode 100644
-index 000000000000..0d7b0fb1bfa3
+index 000000000000..0df42f06a71e
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
-@@ -0,0 +1,1124 @@
+@@ -0,0 +1,1126 @@
 +// All g12b devices should base on either coreelec_g12b.dtsi or coreelec_g12b_a.dtsi
 +#include "coreelec_g12b.dtsi"
 +// OGU specific: Power Management Integrated Controller
@@ -725,11 +725,13 @@ index 000000000000..0d7b0fb1bfa3
 +
 +&meson_fb {
 +	status = "okay";
++    display_mode_default = "panel";
 +	display_size_default = <480 854 480 1708 32>;
 +	mem_size = <0x00800000 0x4b80000 0x100000 0x100000 0x800000>;
 +	logo_addr = "0x3d800000";
 +	mem_alloc = <1>;
 +	pxp_mode = <0>; /** 0:normal mode 1:pxp mode */
++    4k2k_fb = <0>;
 +};
 +
 +&pwm_ab {
@@ -2161,7 +2163,7 @@ index 5b15911709aa..e41f68ad0832 100644
  	name = of_flat_dt_get_machine_name();
  	if (!name)
 diff --git a/drivers/amlogic/media/osd/osd_fb.c b/drivers/amlogic/media/osd/osd_fb.c
-index 192948b9c0b9..1645a2bcd030 100644
+index 192948b9c0b9..13b254eb5291 100644
 --- a/drivers/amlogic/media/osd/osd_fb.c
 +++ b/drivers/amlogic/media/osd/osd_fb.c
 @@ -50,6 +50,7 @@
@@ -2188,15 +2190,15 @@ index 192948b9c0b9..1645a2bcd030 100644
 -					fb_def_var[index].bits_per_pixel);
 -				if (fb_def_var[index].bits_per_pixel > 32)
 -					fb_def_var[index].bits_per_pixel = 32;
-+                if (emuelec_is_ogu) {
-+                    osd_log_info("OGU logic, force OSD 480 854 480 1708 32");
-+                    fb_def_var[index].xres = 480;
-+                    fb_def_var[index].yres = 854;
-+                    fb_def_var[index].xres_virtual = 480;
-+                    fb_def_var[index].yres_virtual = 1708;
-+                    fb_def_var[index].bits_per_pixel = 32;
-+                } else {
-+                    osd_log_info("generic logic, using vinfo %u %u %u %u %u as fbdef\n", var_screeninfo[0], var_screeninfo[1], var_screeninfo[2], var_screeninfo[3], var_screeninfo[4]);
++                // if (emuelec_is_ogu) {
++                //     osd_log_info("OGU logic, force OSD 480 854 480 1708 32");
++                //     fb_def_var[index].xres = 480;
++                //     fb_def_var[index].yres = 854;
++                //     fb_def_var[index].xres_virtual = 480;
++                //     fb_def_var[index].yres_virtual = 1708;
++                //     fb_def_var[index].bits_per_pixel = 32;
++                // } else {
++                    osd_log_info("Using vinfo %u %u %u %u %u as fbdef\n", var_screeninfo[0], var_screeninfo[1], var_screeninfo[2], var_screeninfo[3], var_screeninfo[4]);
 +                    fb_def_var[index].xres = var_screeninfo[0];
 +                    fb_def_var[index].yres = var_screeninfo[1];
 +                    fb_def_var[index].xres_virtual =
@@ -2209,7 +2211,7 @@ index 192948b9c0b9..1645a2bcd030 100644
 +                        fb_def_var[index].bits_per_pixel);
 +                    if (fb_def_var[index].bits_per_pixel > 32)
 +                        fb_def_var[index].bits_per_pixel = 32;
-+                }
++                // }
  			}
  		}
  
