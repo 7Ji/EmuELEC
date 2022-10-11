@@ -1,6 +1,6 @@
-From 8f5e47dc243d5813c1c74f77ec47fd4ca9c825f9 Mon Sep 17 00:00:00 2001
+From 68df993417132237e20f0f55c9befb2adb571c38 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Tue, 11 Oct 2022 08:27:29 +0800
+Date: Tue, 11 Oct 2022 15:45:54 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -12,9 +12,12 @@ Subject: [PATCH] OGU: introduce
  arch/arm64/kernel/setup.c                     |    9 +-
  drivers/amlogic/media/osd/osd_fb.c            |   35 +-
  .../vout/hdmitx/hdmi_tx_20/hdmi_tx_main.c     |   10 +
- .../media/vout/lcd/lcd_extern/lcd_extern.c    |    8 +
- .../media/vout/lcd/lcd_extern/mipi_ST7701.c   |  106 +-
- .../media/vout/vout_serve/vout_serve.c        |   11 +
+ .../media/vout/lcd/lcd_extern/lcd_extern.c    |   10 +-
+ .../media/vout/lcd/lcd_extern/mipi_ST7701.c   |  118 +-
+ .../media/vout/lcd/lcd_tablet/lcd_tablet.c    |    1 +
+ drivers/amlogic/media/vout/lcd/lcd_vout.c     |    6 +-
+ .../amlogic/media/vout/vout_serve/vout_func.c |    2 +-
+ .../media/vout/vout_serve/vout_serve.c        |   15 +-
  drivers/amlogic/mmc/aml_sd_emmc.c             |   26 +-
  drivers/base/dma-contiguous.c                 |    1 +
  drivers/clk/clk-rk808.c                       |   96 +-
@@ -47,7 +50,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 43 files changed, 14731 insertions(+), 297 deletions(-)
+ 46 files changed, 14746 insertions(+), 309 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -78,7 +81,7 @@ index 3de9711b12b7..fa5a5e6fb0d4 100644
  dtb-$(CONFIG_ARM64) += g12b_s922x_ugoos_am6_rev_a_2g.dtb
 diff --git a/arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts b/arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
 new file mode 100644
-index 000000000000..0df42f06a71e
+index 000000000000..b755997c7c38
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
 @@ -0,0 +1,1126 @@
@@ -92,39 +95,39 @@ index 000000000000..0df42f06a71e
 +#include "meson64_gou_joypad.dtsi"
 +
 +/ {
-+    model = "Hardkernel ODROID-GOU";
-+    coreelec-dt-id = "g12b_s922x_odroid_go_ultra"; // Yeah we will still use coreelec-dt-id, never re-invent the wheel huh?
-+    amlogic-dt-id = "g12b_ogu";
++	model = "Hardkernel ODROID-GOU";
++	coreelec-dt-id = "g12b_s922x_odroid_go_ultra"; // Yeah we will still use coreelec-dt-id, never re-invent the wheel huh?
++	amlogic-dt-id = "g12b_ogu";
 +
-+    // /delete-node/ memory@00000000; // Different from N2, we use that, since it's already 2G
++	// /delete-node/ memory@00000000; // Different from N2, we use that, since it's already 2G
 +	/delete-node/ bt-dev; // No BT or Wi-Fi included
 +	/delete-node/ wifi;
 +	/delete-node/ wifi_pwm_conf;
 +	/delete-node/ adc_keypad;
 +	/delete-node/ unifykey;
 +	// /delete-node/ rtc;
-+    /delete-node/ videosync;
-+    /delete-node/ dummy_venc;
-+    /delete-node/ video_composer;
-+    /delete-node/ meson_uvm;
-+    /delete-node/ vcodec_dec;
-+    /delete-node/ jpegenc;
-+    /delete-node/ gpioleds;
-+    /delete-node/ cvbsout;
-+    /delete-node/ linux,picdec;
-+    /delete-node/ picdec;
-+    /delete-node/ multi-di;
++	/delete-node/ videosync;
++	/delete-node/ dummy_venc;
++	/delete-node/ video_composer;
++	/delete-node/ meson_uvm;
++	/delete-node/ vcodec_dec;
++	/delete-node/ jpegenc;
++	/delete-node/ gpioleds;
++	/delete-node/ cvbsout;
++	/delete-node/ linux,picdec;
++	/delete-node/ picdec;
++	/delete-node/ multi-di;
 +
-+    vout {
-+        /delete-property/ fr_policy;
-+    };
++	vout {
++		/delete-property/ fr_policy;
++	};
 +
-+    vout2 { // This is not a label, so it can't be simply disabled at the end
-+        /delete-property/ fr_policy;
-+        status = "disabled";
-+    };
++	vout2 { // This is not a label, so it can't be simply disabled at the end
++		/delete-property/ fr_policy;
++		status = "disabled";
++	};
 +
-+    gpiomem {
++	gpiomem {
 +		compatible = "amlogic, gpiomem";
 +		reg = <0x0 0xff634000 0x0 0x1000>,	/* GPIO banks */
 +			<0x0 0xff800000 0x0 0x1000>;	/* GPIO_AO bank */
@@ -135,12 +138,12 @@ index 000000000000..0df42f06a71e
 +		#address-cells = <2>;
 +		#size-cells = <2>;
 +		ranges;
-+        // /delete-node/ linux,ion-fb;
-+        // /delete-node/ linux,vdin1_cma;
-+        // /delete-node/ linux,galcore;
-+        // /delete-node/ linux,isp_cma;
-+        // /delete-node/ linux,adapt_cma;
-+        // /delete-node/ linux,vdin0_cma;
++		// /delete-node/ linux,ion-fb;
++		// /delete-node/ linux,vdin1_cma;
++		// /delete-node/ linux,galcore;
++		// /delete-node/ linux,isp_cma;
++		// /delete-node/ linux,adapt_cma;
++		// /delete-node/ linux,vdin0_cma;
 +
 +		/* global autoconfigured region for contiguous allocations */
 +		ramoops@0x07400000 {
@@ -149,7 +152,7 @@ index 000000000000..0df42f06a71e
 +			record-size = <0x8000>;
 +			console-size = <0x8000>;
 +			ftrace-size = <0x40000>;
-+            /delete-property/ pmsg-size;
++			/delete-property/ pmsg-size;
 +		};
 +
 +		secmon_reserved:linux,secmon {
@@ -242,7 +245,7 @@ index 000000000000..0df42f06a71e
 +		interrupts = <0 46 1
 +				0 40 1>;
 +		interrupt-names = "pre_irq", "post_irq";
-+        clocks = <&clkc CLKID_VPU_CLKB_TMP_COMP>,
++		clocks = <&clkc CLKID_VPU_CLKB_TMP_COMP>,
 +			<&clkc CLKID_VPU_CLKB_COMP>;
 +		clock-names = "vpu_clkb_tmp_composite",
 +			"vpu_clkb_composite";
@@ -277,12 +280,12 @@ index 000000000000..0df42f06a71e
 +	efusekey:efusekey{
 +		keynum = <1>;
 +		key0 = <&key_0>;
-+        /delete-property/ key1;
-+        /delete-property/ key2;
-+        /delete-property/ key3;
-+        /delete-node/ key_1;
-+        /delete-node/ key_2;
-+        /delete-node/ key_3;
++		/delete-property/ key1;
++		/delete-property/ key2;
++		/delete-property/ key3;
++		/delete-node/ key_1;
++		/delete-node/ key_2;
++		/delete-node/ key_3;
 +
 +		key_0: key_0 {
 +			keyname = "uuid";
@@ -343,17 +346,17 @@ index 000000000000..0df42f06a71e
 +		aml-audio-card,effect = <&audio_effect>;
 +		aml-audio-card,hp-det-gpio = <&gpio_ao GPIOAO_9 GPIO_ACTIVE_LOW>;
 +
-+        /delete-property/ avout_mute-gpios;
-+        /delete-node/ aml-audio-card,dai-link@1;
-+        /delete-node/ aml-audio-card,dai-link@2;
-+        /delete-node/ aml-audio-card,dai-link@3;
++		/delete-property/ avout_mute-gpios;
++		/delete-node/ aml-audio-card,dai-link@1;
++		/delete-node/ aml-audio-card,dai-link@2;
++		/delete-node/ aml-audio-card,dai-link@3;
 +		aml-audio-card,dai-link@0 {
 +			format = "i2s";
 +			mclk-fs = <256>;
 +			bitclock-master = <&aml_tdmb>;
 +			frame-master = <&aml_tdmb>;
 +			continuous-clock;
-+            /delete-property/ bitclock-master;
++			/delete-property/ bitclock-master;
 +			/delete-property/ frame-master;
 +
 +			cpu {
@@ -530,208 +533,208 @@ index 000000000000..0df42f06a71e
 +		};
 +	};
 +
-+    soc {
-+        ion_dev {
-+            memory-region = <&ion_cma_reserved>;
-+        };
-+    };
++	soc {
++		ion_dev {
++			memory-region = <&ion_cma_reserved>;
++		};
++	};
 +
-+    remote:rc@0xff808040 {
-+        compatible = "amlogic, aml_remote";
-+        dev_name = "meson-remote";
-+        reg = <0x0 0xff808040 0x00 0x44>,
-+        <0x0 0xff808000 0x00 0x20>;
-+        status = "okay";
-+        protocol = <0x01>;
-+        interrupts = <0 196 1>;
-+        pinctrl-names = "default";
-+        pinctrl-0 = <&remote_pins>;
-+        map = <&custom_maps>;
-+        max_frame_time = <200>;
-+    };
++	remote:rc@0xff808040 {
++		compatible = "amlogic, aml_remote";
++		dev_name = "meson-remote";
++		reg = <0x0 0xff808040 0x00 0x44>,
++		<0x0 0xff808000 0x00 0x20>;
++		status = "okay";
++		protocol = <0x01>;
++		interrupts = <0 196 1>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&remote_pins>;
++		map = <&custom_maps>;
++		max_frame_time = <200>;
++	};
 +
-+    custom_maps:custom_maps {
-+        mapnum = <3>;
-+        map0 = <&map_0>;
-+        map1 = <&map_1>;
-+        map2 = <&map_2>;
-+        map_0: map_0{
-+            mapname = "amlogic-remote-1";
-+            customcode = <0xfb04>;
-+            release_delay = <80>;
-+            size = <50>;
-+            keymap = <((((0x47) & 0xFFFF)<<16) | ((11) & 0xFFFF))
-+                ((((0x13) & 0xFFFF)<<16) | ((2) & 0xFFFF))
-+                ((((0x10) & 0xFFFF)<<16) | ((3) & 0xFFFF))
-+                ((((0x11) & 0xFFFF)<<16) | ((4) & 0xFFFF))
-+                ((((0x0F) & 0xFFFF)<<16) | ((5) & 0xFFFF))
-+                ((((0x0C) & 0xFFFF)<<16) | ((6) & 0xFFFF))
-+                ((((0x0D) & 0xFFFF)<<16) | ((7) & 0xFFFF))
-+                ((((0x0B) & 0xFFFF)<<16) | ((8) & 0xFFFF))
-+                ((((0x08) & 0xFFFF)<<16) | ((9) & 0xFFFF))
-+                ((((0x09) & 0xFFFF)<<16) | ((10) & 0xFFFF))
-+                ((((0x5C) & 0xFFFF)<<16) | ((97) & 0xFFFF))
-+                ((((0x51) & 0xFFFF)<<16) | ((61) & 0xFFFF))
-+                ((((0x50) & 0xFFFF)<<16) | ((62) & 0xFFFF))
-+                ((((0x40) & 0xFFFF)<<16) | ((63) & 0xFFFF))
-+                ((((0x4d) & 0xFFFF)<<16) | ((64) & 0xFFFF))
-+                ((((0x43) & 0xFFFF)<<16) | ((65) & 0xFFFF))
-+                ((((0x17) & 0xFFFF)<<16) | ((66) & 0xFFFF))
-+                ((((0x00) & 0xFFFF)<<16) | ((67) & 0xFFFF))
-+                ((((0x01) & 0xFFFF)<<16) | ((68) & 0xFFFF))
-+                ((((0x16) & 0xFFFF)<<16) | ((87) & 0xFFFF))
-+                ((((0x49) & 0xFFFF)<<16) | ((14) & 0xFFFF))
-+                ((((0x06) & 0xFFFF)<<16) | ((130) & 0xFFFF))
-+                ((((0x14) & 0xFFFF)<<16) | ((131) & 0xFFFF))
-+                ((((0x44) & 0xFFFF)<<16) | ((103) & 0xFFFF))
-+                ((((0x1D) & 0xFFFF)<<16) | ((108) & 0xFFFF))
-+                ((((0x1C) & 0xFFFF)<<16) | ((105) & 0xFFFF))
-+                ((((0x48) & 0xFFFF)<<16) | ((106) & 0xFFFF))
-+                ((((0x53) & 0xFFFF)<<16) | ((125) & 0xFFFF))
-+                ((((0x45) & 0xFFFF)<<16) | ((104) & 0xFFFF))
-+                ((((0x19) & 0xFFFF)<<16) | ((109) & 0xFFFF))
-+                ((((0x52) & 0xFFFF)<<16) | ((119) & 0xFFFF))
-+                ((((0x05) & 0xFFFF)<<16) | ((122) & 0xFFFF))
-+                ((((0x59) & 0xFFFF)<<16) | ((123) & 0xFFFF))
-+                ((((0x1b) & 0xFFFF)<<16) | ((120) & 0xFFFF))
-+                ((((0x04) & 0xFFFF)<<16) | ((121) & 0xFFFF))
-+                ((((0x1A) & 0xFFFF)<<16) | ((116) & 0xFFFF))
-+                ((((0x0A) & 0xFFFF)<<16) | ((15) & 0xFFFF))
-+                ((((0x0e) & 0xFFFF)<<16) | ((113) & 0xFFFF))
-+                ((((0x1F) & 0xFFFF)<<16) | ((102) & 0xFFFF))
-+                ((((0x1e) & 0xFFFF)<<16) | ((132) & 0xFFFF))
-+                ((((0x07) & 0xFFFF)<<16) | ((133) & 0xFFFF))
-+                ((((0x12) & 0xFFFF)<<16) | ((134) & 0xFFFF))
-+                ((((0x54) & 0xFFFF)<<16) | ((135) & 0xFFFF))
-+                ((((0x02) & 0xFFFF)<<16) | ((136) & 0xFFFF))
-+                ((((0x4f) & 0xFFFF)<<16) | ((30) & 0xFFFF))
-+                ((((0x42) & 0xFFFF)<<16) | ((48) & 0xFFFF))
-+                ((((0x5d) & 0xFFFF)<<16) | ((46) & 0xFFFF))
-+                ((((0x4c) & 0xFFFF)<<16) | ((32) & 0xFFFF))
-+                ((((0x58) & 0xFFFF)<<16) | ((137) & 0xFFFF))
-+                ((((0x55) & 0xFFFF)<<16) | ((140) & 0xFFFF))>;
-+        };
-+        map_1: map_1{
-+            mapname = "amlogic-remote-2";
-+            customcode = <0xfe01>;
-+            release_delay = <80>;
-+            size = <53>;
-+            keymap = <((((0x01) & 0xFFFF)<<16) | ((2) & 0xFFFF))
-+                ((((0x02) & 0xFFFF)<<16) | ((3) & 0xFFFF))
-+                ((((0x03) & 0xFFFF)<<16) | ((4) & 0xFFFF))
-+                ((((0x04) & 0xFFFF)<<16) | ((5) & 0xFFFF))
-+                ((((0x05) & 0xFFFF)<<16) | ((6) & 0xFFFF))
-+                ((((0x06) & 0xFFFF)<<16) | ((7) & 0xFFFF))
-+                ((((0x07) & 0xFFFF)<<16) | ((8) & 0xFFFF))
-+                ((((0x08) & 0xFFFF)<<16) | ((9) & 0xFFFF))
-+                ((((0x09) & 0xFFFF)<<16) | ((10) & 0xFFFF))
-+                ((((0x0a) & 0xFFFF)<<16) | ((11) & 0xFFFF))
-+                ((((0x1F) & 0xFFFF)<<16) | ((0x1d2) & 0xFFFF))
-+                ((((0x15) & 0xFFFF)<<16) | ((139) & 0xFFFF))
-+                ((((0x16) & 0xFFFF)<<16) | ((15) & 0xFFFF))
-+                ((((0x0c) & 0xFFFF)<<16) | ((0x192) & 0xFFFF))
-+                ((((0x0d) & 0xFFFF)<<16) | ((0x193) & 0xFFFF))
-+                ((((0x0e) & 0xFFFF)<<16) | ((115) & 0xFFFF))
-+                ((((0x0f) & 0xFFFF)<<16) | ((114) & 0xFFFF))
-+                ((((0x11) & 0xFFFF)<<16) | ((102) & 0xFFFF))
-+                ((((0x1c) & 0xFFFF)<<16) | ((106) & 0xFFFF))
-+                ((((0x1b) & 0xFFFF)<<16) | ((105) & 0xFFFF))
-+                ((((0x19) & 0xFFFF)<<16) | ((103) & 0xFFFF))
-+                ((((0x1a) & 0xFFFF)<<16) | ((108) & 0xFFFF))
-+                ((((0x1d) & 0xFFFF)<<16) | ((28) & 0xFFFF))
-+                ((((0x17) & 0xFFFF)<<16) | ((113) & 0xFFFF))
-+                ((((0x49) & 0xFFFF)<<16) | ((219) & 0xFFFF))
-+                ((((0x43) & 0xFFFF)<<16) | ((158) & 0xFFFF))
-+                ((((0x12) & 0xFFFF)<<16) | ((0x1d5) & 0xFFFF))
-+                ((((0x14) & 0xFFFF)<<16) | ((0x1d6) & 0xFFFF))
-+                ((((0x18) & 0xFFFF)<<16) | ((0x1d7) & 0xFFFF))
-+                ((((0x59) & 0xFFFF)<<16) | ((0x166) & 0xFFFF))
-+                ((((0x5a) & 0xFFFF)<<16) | ((166) & 0xFFFF))
-+                ((((0x10) & 0xFFFF)<<16) | ((116) & 0xFFFF))
-+                ((((0x42) & 0xFFFF)<<16) | ((165) & 0xFFFF))
-+                ((((0x44) & 0xFFFF)<<16) | ((163) & 0xFFFF))
-+                ((((0x1e) & 0xFFFF)<<16) | ((168) & 0xFFFF))
-+                ((((0x4b) & 0xFFFF)<<16) | ((208) & 0xFFFF))
-+                ((((0x58) & 0xFFFF)<<16) | ((164) & 0xFFFF))
-+                ((((0x46) & 0xFFFF)<<16) | ((130) & 0xFFFF))
-+                ((((0x40) & 0xFFFF)<<16) | ((131) & 0xFFFF))
-+                ((((0x38) & 0xFFFF)<<16) | ((70) & 0xFFFF))
-+                ((((0x57) & 0xFFFF)<<16) | ((0x1d0) & 0xFFFF))
-+                ((((0x5b) & 0xFFFF)<<16) | ((0x1d1) & 0xFFFF))
-+                ((((0x54) & 0xFFFF)<<16) | ((0x18e) & 0xFFFF))
-+                ((((0x4c) & 0xFFFF)<<16) | ((0x18f) & 0xFFFF))
-+                ((((0x4e) & 0xFFFF)<<16) | ((0x190) & 0xFFFF))
-+                ((((0x55) & 0xFFFF)<<16) | ((0x191) & 0xFFFF))
-+                ((((0x53) & 0xFFFF)<<16) | ((237) & 0xFFFF))
-+                ((((0x52) & 0xFFFF)<<16) | ((238) & 0xFFFF))
-+                ((((0x39) & 0xFFFF)<<16) | ((212) & 0xFFFF))
-+                ((((0x41) & 0xFFFF)<<16) | ((213) & 0xFFFF))
-+                ((((0x0b) & 0xFFFF)<<16) | ((214) & 0xFFFF))
-+                ((((0x00) & 0xFFFF)<<16) | ((216) & 0xFFFF))
-+                ((((0x13) & 0xFFFF)<<16) | ((217) & 0xFFFF))>;
-+        };
-+        map_2: map_2{
-+            mapname = "amlogic-remote-3";
-+            customcode = <0xbd02>;
-+            release_delay = <80>;
-+            size = <17>;
-+            keymap = <((((0xca) & 0xFFFF)<<16) | ((103) & 0xFFFF))
-+            ((((0xd2) & 0xFFFF)<<16) | ((108) & 0xFFFF))
-+            ((((0x99) & 0xFFFF)<<16) | ((105) & 0xFFFF))
-+            ((((0xc1) & 0xFFFF)<<16) | ((106) & 0xFFFF))
-+            ((((0xce) & 0xFFFF)<<16) | ((97) & 0xFFFF))
-+            ((((0x45) & 0xFFFF)<<16) | ((116) & 0xFFFF))
-+            ((((0xc5) & 0xFFFF)<<16) | ((133) & 0xFFFF))
-+            ((((0x80) & 0xFFFF)<<16) | ((113) & 0xFFFF))
-+            ((((0xd0) & 0xFFFF)<<16) | ((15) & 0xFFFF))
-+            ((((0xd6) & 0xFFFF)<<16) | ((125) & 0xFFFF))
-+            ((((0x95) & 0xFFFF)<<16) | ((102) & 0xFFFF))
-+            ((((0xdd) & 0xFFFF)<<16) | ((104) & 0xFFFF))
-+            ((((0x8c) & 0xFFFF)<<16) | ((109) & 0xFFFF))
-+            ((((0x89) & 0xFFFF)<<16) | ((131) & 0xFFFF))
-+            ((((0x9c) & 0xFFFF)<<16) | ((130) & 0xFFFF))
-+            ((((0x9a) & 0xFFFF)<<16) | ((120) & 0xFFFF))
-+            ((((0xcd) & 0xFFFF)<<16) | ((121) & 0xFFFF))>;
-+        };
-+    };
++	custom_maps:custom_maps {
++		mapnum = <3>;
++		map0 = <&map_0>;
++		map1 = <&map_1>;
++		map2 = <&map_2>;
++		map_0: map_0{
++			mapname = "amlogic-remote-1";
++			customcode = <0xfb04>;
++			release_delay = <80>;
++			size = <50>;
++			keymap = <((((0x47) & 0xFFFF)<<16) | ((11) & 0xFFFF))
++				((((0x13) & 0xFFFF)<<16) | ((2) & 0xFFFF))
++				((((0x10) & 0xFFFF)<<16) | ((3) & 0xFFFF))
++				((((0x11) & 0xFFFF)<<16) | ((4) & 0xFFFF))
++				((((0x0F) & 0xFFFF)<<16) | ((5) & 0xFFFF))
++				((((0x0C) & 0xFFFF)<<16) | ((6) & 0xFFFF))
++				((((0x0D) & 0xFFFF)<<16) | ((7) & 0xFFFF))
++				((((0x0B) & 0xFFFF)<<16) | ((8) & 0xFFFF))
++				((((0x08) & 0xFFFF)<<16) | ((9) & 0xFFFF))
++				((((0x09) & 0xFFFF)<<16) | ((10) & 0xFFFF))
++				((((0x5C) & 0xFFFF)<<16) | ((97) & 0xFFFF))
++				((((0x51) & 0xFFFF)<<16) | ((61) & 0xFFFF))
++				((((0x50) & 0xFFFF)<<16) | ((62) & 0xFFFF))
++				((((0x40) & 0xFFFF)<<16) | ((63) & 0xFFFF))
++				((((0x4d) & 0xFFFF)<<16) | ((64) & 0xFFFF))
++				((((0x43) & 0xFFFF)<<16) | ((65) & 0xFFFF))
++				((((0x17) & 0xFFFF)<<16) | ((66) & 0xFFFF))
++				((((0x00) & 0xFFFF)<<16) | ((67) & 0xFFFF))
++				((((0x01) & 0xFFFF)<<16) | ((68) & 0xFFFF))
++				((((0x16) & 0xFFFF)<<16) | ((87) & 0xFFFF))
++				((((0x49) & 0xFFFF)<<16) | ((14) & 0xFFFF))
++				((((0x06) & 0xFFFF)<<16) | ((130) & 0xFFFF))
++				((((0x14) & 0xFFFF)<<16) | ((131) & 0xFFFF))
++				((((0x44) & 0xFFFF)<<16) | ((103) & 0xFFFF))
++				((((0x1D) & 0xFFFF)<<16) | ((108) & 0xFFFF))
++				((((0x1C) & 0xFFFF)<<16) | ((105) & 0xFFFF))
++				((((0x48) & 0xFFFF)<<16) | ((106) & 0xFFFF))
++				((((0x53) & 0xFFFF)<<16) | ((125) & 0xFFFF))
++				((((0x45) & 0xFFFF)<<16) | ((104) & 0xFFFF))
++				((((0x19) & 0xFFFF)<<16) | ((109) & 0xFFFF))
++				((((0x52) & 0xFFFF)<<16) | ((119) & 0xFFFF))
++				((((0x05) & 0xFFFF)<<16) | ((122) & 0xFFFF))
++				((((0x59) & 0xFFFF)<<16) | ((123) & 0xFFFF))
++				((((0x1b) & 0xFFFF)<<16) | ((120) & 0xFFFF))
++				((((0x04) & 0xFFFF)<<16) | ((121) & 0xFFFF))
++				((((0x1A) & 0xFFFF)<<16) | ((116) & 0xFFFF))
++				((((0x0A) & 0xFFFF)<<16) | ((15) & 0xFFFF))
++				((((0x0e) & 0xFFFF)<<16) | ((113) & 0xFFFF))
++				((((0x1F) & 0xFFFF)<<16) | ((102) & 0xFFFF))
++				((((0x1e) & 0xFFFF)<<16) | ((132) & 0xFFFF))
++				((((0x07) & 0xFFFF)<<16) | ((133) & 0xFFFF))
++				((((0x12) & 0xFFFF)<<16) | ((134) & 0xFFFF))
++				((((0x54) & 0xFFFF)<<16) | ((135) & 0xFFFF))
++				((((0x02) & 0xFFFF)<<16) | ((136) & 0xFFFF))
++				((((0x4f) & 0xFFFF)<<16) | ((30) & 0xFFFF))
++				((((0x42) & 0xFFFF)<<16) | ((48) & 0xFFFF))
++				((((0x5d) & 0xFFFF)<<16) | ((46) & 0xFFFF))
++				((((0x4c) & 0xFFFF)<<16) | ((32) & 0xFFFF))
++				((((0x58) & 0xFFFF)<<16) | ((137) & 0xFFFF))
++				((((0x55) & 0xFFFF)<<16) | ((140) & 0xFFFF))>;
++		};
++		map_1: map_1{
++			mapname = "amlogic-remote-2";
++			customcode = <0xfe01>;
++			release_delay = <80>;
++			size = <53>;
++			keymap = <((((0x01) & 0xFFFF)<<16) | ((2) & 0xFFFF))
++				((((0x02) & 0xFFFF)<<16) | ((3) & 0xFFFF))
++				((((0x03) & 0xFFFF)<<16) | ((4) & 0xFFFF))
++				((((0x04) & 0xFFFF)<<16) | ((5) & 0xFFFF))
++				((((0x05) & 0xFFFF)<<16) | ((6) & 0xFFFF))
++				((((0x06) & 0xFFFF)<<16) | ((7) & 0xFFFF))
++				((((0x07) & 0xFFFF)<<16) | ((8) & 0xFFFF))
++				((((0x08) & 0xFFFF)<<16) | ((9) & 0xFFFF))
++				((((0x09) & 0xFFFF)<<16) | ((10) & 0xFFFF))
++				((((0x0a) & 0xFFFF)<<16) | ((11) & 0xFFFF))
++				((((0x1F) & 0xFFFF)<<16) | ((0x1d2) & 0xFFFF))
++				((((0x15) & 0xFFFF)<<16) | ((139) & 0xFFFF))
++				((((0x16) & 0xFFFF)<<16) | ((15) & 0xFFFF))
++				((((0x0c) & 0xFFFF)<<16) | ((0x192) & 0xFFFF))
++				((((0x0d) & 0xFFFF)<<16) | ((0x193) & 0xFFFF))
++				((((0x0e) & 0xFFFF)<<16) | ((115) & 0xFFFF))
++				((((0x0f) & 0xFFFF)<<16) | ((114) & 0xFFFF))
++				((((0x11) & 0xFFFF)<<16) | ((102) & 0xFFFF))
++				((((0x1c) & 0xFFFF)<<16) | ((106) & 0xFFFF))
++				((((0x1b) & 0xFFFF)<<16) | ((105) & 0xFFFF))
++				((((0x19) & 0xFFFF)<<16) | ((103) & 0xFFFF))
++				((((0x1a) & 0xFFFF)<<16) | ((108) & 0xFFFF))
++				((((0x1d) & 0xFFFF)<<16) | ((28) & 0xFFFF))
++				((((0x17) & 0xFFFF)<<16) | ((113) & 0xFFFF))
++				((((0x49) & 0xFFFF)<<16) | ((219) & 0xFFFF))
++				((((0x43) & 0xFFFF)<<16) | ((158) & 0xFFFF))
++				((((0x12) & 0xFFFF)<<16) | ((0x1d5) & 0xFFFF))
++				((((0x14) & 0xFFFF)<<16) | ((0x1d6) & 0xFFFF))
++				((((0x18) & 0xFFFF)<<16) | ((0x1d7) & 0xFFFF))
++				((((0x59) & 0xFFFF)<<16) | ((0x166) & 0xFFFF))
++				((((0x5a) & 0xFFFF)<<16) | ((166) & 0xFFFF))
++				((((0x10) & 0xFFFF)<<16) | ((116) & 0xFFFF))
++				((((0x42) & 0xFFFF)<<16) | ((165) & 0xFFFF))
++				((((0x44) & 0xFFFF)<<16) | ((163) & 0xFFFF))
++				((((0x1e) & 0xFFFF)<<16) | ((168) & 0xFFFF))
++				((((0x4b) & 0xFFFF)<<16) | ((208) & 0xFFFF))
++				((((0x58) & 0xFFFF)<<16) | ((164) & 0xFFFF))
++				((((0x46) & 0xFFFF)<<16) | ((130) & 0xFFFF))
++				((((0x40) & 0xFFFF)<<16) | ((131) & 0xFFFF))
++				((((0x38) & 0xFFFF)<<16) | ((70) & 0xFFFF))
++				((((0x57) & 0xFFFF)<<16) | ((0x1d0) & 0xFFFF))
++				((((0x5b) & 0xFFFF)<<16) | ((0x1d1) & 0xFFFF))
++				((((0x54) & 0xFFFF)<<16) | ((0x18e) & 0xFFFF))
++				((((0x4c) & 0xFFFF)<<16) | ((0x18f) & 0xFFFF))
++				((((0x4e) & 0xFFFF)<<16) | ((0x190) & 0xFFFF))
++				((((0x55) & 0xFFFF)<<16) | ((0x191) & 0xFFFF))
++				((((0x53) & 0xFFFF)<<16) | ((237) & 0xFFFF))
++				((((0x52) & 0xFFFF)<<16) | ((238) & 0xFFFF))
++				((((0x39) & 0xFFFF)<<16) | ((212) & 0xFFFF))
++				((((0x41) & 0xFFFF)<<16) | ((213) & 0xFFFF))
++				((((0x0b) & 0xFFFF)<<16) | ((214) & 0xFFFF))
++				((((0x00) & 0xFFFF)<<16) | ((216) & 0xFFFF))
++				((((0x13) & 0xFFFF)<<16) | ((217) & 0xFFFF))>;
++		};
++		map_2: map_2{
++			mapname = "amlogic-remote-3";
++			customcode = <0xbd02>;
++			release_delay = <80>;
++			size = <17>;
++			keymap = <((((0xca) & 0xFFFF)<<16) | ((103) & 0xFFFF))
++			((((0xd2) & 0xFFFF)<<16) | ((108) & 0xFFFF))
++			((((0x99) & 0xFFFF)<<16) | ((105) & 0xFFFF))
++			((((0xc1) & 0xFFFF)<<16) | ((106) & 0xFFFF))
++			((((0xce) & 0xFFFF)<<16) | ((97) & 0xFFFF))
++			((((0x45) & 0xFFFF)<<16) | ((116) & 0xFFFF))
++			((((0xc5) & 0xFFFF)<<16) | ((133) & 0xFFFF))
++			((((0x80) & 0xFFFF)<<16) | ((113) & 0xFFFF))
++			((((0xd0) & 0xFFFF)<<16) | ((15) & 0xFFFF))
++			((((0xd6) & 0xFFFF)<<16) | ((125) & 0xFFFF))
++			((((0x95) & 0xFFFF)<<16) | ((102) & 0xFFFF))
++			((((0xdd) & 0xFFFF)<<16) | ((104) & 0xFFFF))
++			((((0x8c) & 0xFFFF)<<16) | ((109) & 0xFFFF))
++			((((0x89) & 0xFFFF)<<16) | ((131) & 0xFFFF))
++			((((0x9c) & 0xFFFF)<<16) | ((130) & 0xFFFF))
++			((((0x9a) & 0xFFFF)<<16) | ((120) & 0xFFFF))
++			((((0xcd) & 0xFFFF)<<16) | ((121) & 0xFFFF))>;
++		};
++	};
 +
-+    galcore {
-+        status = "disabled";
-+        /delete-property/ memory-region;
-+    };
++	galcore {
++		status = "disabled";
++		/delete-property/ memory-region;
++	};
 +
-+    nand: nfc@0 {
-+        compatible = "amlogic, aml_mtd_nand";
-+        dev_name = "mtdnand";
-+        status = "disabled";
-+        reg = <0x0 0xFFE07800 0x0 0x200>;
-+        interrupts = <0 34 1>;
-+        pinctrl-names = "nand_rb_mod","nand_norb_mod", "nand_cs_only";
-+        pinctrl-0 = <&all_nand_pins>;
-+        pinctrl-1 = <&all_nand_pins>;
-+        pinctrl-2 = <&nand_cs_pins>;
-+        clock-names = "core", "clkin";
-+        device_id = <0>;
-+        bl_mode = <1>;
-+        fip_copies = <4>;
-+        fip_size = <0x200000>;
-+        nand_clk_ctrl = <0xFFE07000>;
-+    };
++	nand: nfc@0 {
++		compatible = "amlogic, aml_mtd_nand";
++		dev_name = "mtdnand";
++		status = "disabled";
++		reg = <0x0 0xFFE07800 0x0 0x200>;
++		interrupts = <0 34 1>;
++		pinctrl-names = "nand_rb_mod","nand_norb_mod", "nand_cs_only";
++		pinctrl-0 = <&all_nand_pins>;
++		pinctrl-1 = <&all_nand_pins>;
++		pinctrl-2 = <&nand_cs_pins>;
++		clock-names = "core", "clkin";
++		device_id = <0>;
++		bl_mode = <1>;
++		fip_copies = <4>;
++		fip_size = <0x200000>;
++		nand_clk_ctrl = <0xFFE07000>;
++	};
 +
-+    ddr_bandwidth {
-+        /delete-property/ sec_base;
-+    };
++	ddr_bandwidth {
++		/delete-property/ sec_base;
++	};
 +}; /* end of / */
 +
 +&meson_fb {
 +	status = "okay";
-+    display_mode_default = "panel";
++	display_mode_default = "panel";
 +	display_size_default = <480 854 480 1708 32>;
 +	mem_size = <0x00800000 0x4b80000 0x100000 0x100000 0x800000>;
 +	logo_addr = "0x3d800000";
 +	mem_alloc = <1>;
 +	pxp_mode = <0>; /** 0:normal mode 1:pxp mode */
-+    4k2k_fb = <0>;
++	4k2k_fb = <0>;
 +};
 +
 +&pwm_ab {
@@ -744,8 +747,8 @@ index 000000000000..0df42f06a71e
 +
 +&audiobus {
 +	/* tdmb to internal DAC output*/
-+    /delete-node/ loopback@0;
-+    /delete-node/ i2s2hdmi;
++	/delete-node/ loopback@0;
++	/delete-node/ i2s2hdmi;
 +	aml_tdmb: tdmb {
 +		compatible = "amlogic, g12a-snd-tdmb";
 +		#sound-dai-cells = <0>;
@@ -760,7 +763,7 @@ index 000000000000..0df42f06a71e
 +		mclk_pad = <0>;  /* 0: mclk_0; 1: mclk_1 */
 +		i2s2hdmi = <0>;
 +
-+        /delete-property/ samesource_sel;
++		/delete-property/ samesource_sel;
 +	};
 +	aml_spdif: spdif {
 +		compatible = "amlogic, g12a-snd-spdif-a";
@@ -779,7 +782,7 @@ index 000000000000..0df42f06a71e
 +		interrupt-names = "irq_spdifin";
 +		status = "disabled";
 +
-+        /delete-property/ pinctrl-names;
++		/delete-property/ pinctrl-names;
 +	};
 +	aml_spdif_b: spdif_b {
 +		compatible = "amlogic, g12a-snd-spdif-b";
@@ -910,29 +913,29 @@ index 000000000000..0df42f06a71e
 +		};
 +	};
 +
-+    spifc_all_pins: spifc_all_pins {
-+        mux {
-+            groups = "nor_d",
-+                "nor_q",
-+                "nor_c";
-+            function = "nor";
-+            input-enable;
-+            bias-pull-up;
-+        };
-+    };
++	spifc_all_pins: spifc_all_pins {
++		mux {
++			groups = "nor_d",
++				"nor_q",
++				"nor_c";
++			function = "nor";
++			input-enable;
++			bias-pull-up;
++		};
++	};
 +}; /* end of pinctrl_periphs */
 +
 +&a_uart_pins {
-+    mux {
-+        groups = "uart_tx_a",
-+            "uart_rx_a",
-+            "uart_rts_a";
-+    };
-+    mux1 {
-+        groups = "uart_cts_a";
-+        function = "uart_a";
-+        bias-pull-down;
-+    };
++	mux {
++		groups = "uart_tx_a",
++			"uart_rx_a",
++			"uart_rts_a";
++	};
++	mux1 {
++		groups = "uart_cts_a";
++		function = "uart_a";
++		bias-pull-down;
++	};
 +};
 +
 +&audio_data {
@@ -946,7 +949,7 @@ index 000000000000..0df42f06a71e
 +	vmmc-supply = <&vcc_sd>;
 +	vqmmc-supply = <&vddio_ao1v8>;
 +	emmc {
-+        // /delete-property/ save_para;
++		// /delete-property/ save_para;
 +		// /delete-property/ compute_cmd_delay;
 +		// /delete-property/ compute_coef;
 +		caps = "MMC_CAP_8_BIT_DATA",
@@ -983,21 +986,21 @@ index 000000000000..0df42f06a71e
 +	// 		 "MMC_CAP_CMD23";
 +	// 	f_min = <400000>;
 +	// 	f_max = <200000000>;
-+    //     jtag_pin = <&gpio 42 0>;
++	//	 jtag_pin = <&gpio 42 0>;
 +	// };
 +};
 +
 +&sd_emmc_a {
-+    status = "disabled";
-+    sdio {
-+        /delete-property/ caps;
-+        /delete-property/ f_min;
-+        /delete-property/ f_max;
-+    };
++	status = "disabled";
++	sdio {
++		/delete-property/ caps;
++		/delete-property/ f_min;
++		/delete-property/ f_max;
++	};
 +};
 +
 +&gpu {
-+    min_clk = <4>;
++	min_clk = <4>;
 +};
 +
 +&dvfs285_cfg {
@@ -1017,40 +1020,40 @@ index 000000000000..0df42f06a71e
 +};
 +
 +&ethmac {
-+    status = "disabled";
-+    /delete-property/ mc_val;
-+    /delete-property/ internal_phy;
++	status = "disabled";
++	/delete-property/ mc_val;
++	/delete-property/ internal_phy;
 +	/delete-property/ pinctrl-names;
 +	/delete-property/ pinctrl-0;
 +};
 +
 +&external_eth_pins {
-+    mux {
-+        groups = "eth_mdio",
-+        "eth_mdc",
-+        "eth_rgmii_rx_clk",
-+        "eth_rx_dv",
-+        "eth_rxd0",
-+        "eth_rxd1",
-+        "eth_rxd2_rgmii",
-+        "eth_rxd3_rgmii",
-+        "eth_rgmii_tx_clk",
-+        "eth_txen",
-+        "eth_txd0",
-+        "eth_txd1",
-+        "eth_txd2_rgmii",
-+        "eth_txd3_rgmii";
-+    };
++	mux {
++		groups = "eth_mdio",
++		"eth_mdc",
++		"eth_rgmii_rx_clk",
++		"eth_rx_dv",
++		"eth_rxd0",
++		"eth_rxd1",
++		"eth_rxd2_rgmii",
++		"eth_rxd3_rgmii",
++		"eth_rgmii_tx_clk",
++		"eth_txen",
++		"eth_txd0",
++		"eth_txd1",
++		"eth_txd2_rgmii",
++		"eth_txd3_rgmii";
++	};
 +};
 +
 +&pinctrl_aobus {
-+    /delete-node/ spdifout;
-+    /delete-node/ spdifout_a_mute;
++	/delete-node/ spdifout;
++	/delete-node/ spdifout_a_mute;
 +};
 +
 +&aml_spdif {
-+    /delete-property/ pinctrl-0;
-+    /delete-property/ pinctrl-1;
++	/delete-property/ pinctrl-0;
++	/delete-property/ pinctrl-1;
 +};
 +
 +&usb2_phy_v2 {
@@ -1071,17 +1074,17 @@ index 000000000000..0df42f06a71e
 +&pcie_A {
 +	reset-gpio = <&gpio GPIOX_7 GPIO_ACTIVE_HIGH>;
 +	status = "disabled";
-+    clock-names = "pcie_refpll",
-+                "pcie",
-+                "pcie_phy";
++	clock-names = "pcie_refpll",
++				"pcie",
++				"pcie_phy";
 +};
 +
 +&usb3_phy_v2 {
 +	status = "okay";
 +	portnum = <1>;
 +	otg = <1>;
-+    /delete-property/ gpio-vbus-power;
-+    /delete-property/ gpios;
++	/delete-property/ gpio-vbus-power;
++	/delete-property/ gpios;
 +};
 +
 +&saradc {
@@ -1102,8 +1105,8 @@ index 000000000000..0df42f06a71e
 +
 +&isp {
 +	status = "disabled";
-+    temper-buf-size = <24>;
-+    /delete-property/ temper-line-offset;
++	temper-buf-size = <24>;
++	/delete-property/ temper-line-offset;
 +	/delete-property/ temper-frame-num;
 +	/delete-property/ temper-frame-size;
 +	/delete-property/ memory-region;
@@ -1111,107 +1114,107 @@ index 000000000000..0df42f06a71e
 +
 +&adapter {
 +	status = "disabled";
-+    mem_alloc = <48>;
-+    /delete-property/ memory-region;
++	mem_alloc = <48>;
++	/delete-property/ memory-region;
 +};
 +
 +&amhdmitx {
 +	status = "disabled";
-+    interrupts = <0 57 1>;
-+    interrupt-names = "hdmitx_hpd";
++	interrupts = <0 57 1>;
++	interrupt-names = "hdmitx_hpd";
 +};
 +
 +&aocec {
 +	status = "disabled";
-+    compatible = "amlogic, aocec-g12a";
-+    ee_cec;
-+    arc_port_mask = <0x02>;
-+    /delete-property/ output;
++	compatible = "amlogic, aocec-g12a";
++	ee_cec;
++	arc_port_mask = <0x02>;
++	/delete-property/ output;
 +};
 +
 +&cbus {
-+    spifc: spifc@14000 {
-+        status = "disabled";
-+        compatible = "amlogic,aml-spi-nor";
-+        reg = <0x0 0x14000 0x0 0x80>;
-+        pinctrl-names = "default";
-+        pinctrl-0 = <&spifc_all_pins>;
-+        clocks = <&clkc 11>;
-+        clock-names = "core";
++	spifc: spifc@14000 {
++		status = "disabled";
++		compatible = "amlogic,aml-spi-nor";
++		reg = <0x0 0x14000 0x0 0x80>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&spifc_all_pins>;
++		clocks = <&clkc 11>;
++		clock-names = "core";
 +   };
 +};
 +
 +&uart_A {
-+    status = "disabled";
++	status = "disabled";
 +};
 +
 +&vdin0 {
-+    /delete-property/ cma_size;
-+    /delete-property/ tv_bit_mode;
++	/delete-property/ cma_size;
++	/delete-property/ tv_bit_mode;
 +};
 +
 +&vdin1 {
-+    /delete-property/ memory-region;
-+    /delete-property/ tv_bit_mode;
++	/delete-property/ memory-region;
++	/delete-property/ tv_bit_mode;
 +};
 +
 +&meson_cooldev {
-+    cooling_devices {
-+        cpufreq_cool_cluster0 {
-+            gpu_pp = <2>;
-+        };
-+        cpufreq_cool_cluster1 {
-+            gpu_pp = <2>;
-+        };
-+        cpucore_cool_cluster {
-+            dyn_coeff = <0>;
-+            gpu_pp = <2>;
-+        };
-+        gpufreq_cool {
-+            cluster_id = <0>;
-+        };
-+        gpucore_cool {
-+            dyn_coeff = <0>;
-+            cluster_id = <0>;
-+            gpu_pp = <2>;
-+        };
-+    };
++	cooling_devices {
++		cpufreq_cool_cluster0 {
++			gpu_pp = <2>;
++		};
++		cpufreq_cool_cluster1 {
++			gpu_pp = <2>;
++		};
++		cpucore_cool_cluster {
++			dyn_coeff = <0>;
++			gpu_pp = <2>;
++		};
++		gpufreq_cool {
++			cluster_id = <0>;
++		};
++		gpucore_cool {
++			dyn_coeff = <0>;
++			cluster_id = <0>;
++			gpu_pp = <2>;
++		};
++	};
 +};
 +
 +&pswitch_on {
-+    temperature = <65000>;
++	temperature = <65000>;
 +};
 +
 +&phot {
-+    temperature = <95000>;
++	temperature = <95000>;
 +};
 +
 +&soc_thermal {
-+    cooling-maps {
-+        /delete-node/ cpucore_cooling_map0;
-+        cpufreq_cooling_map0 {
-+            cooling-device = <&cpufreq_cool0 0 10>;
-+        };
-+        cpufreq_cooling_map1 {
-+            cooling-device = <&cpufreq_cool1 0 9>;
-+        };
-+        cpucore_cooling_map {
-+            trip = <&pcontrol>;
-+            cooling-device = <&cpucore_cool 0 5>;
-+            contribution = <1024>;
-+        };
-+        gpufreq_cooling_map {
-+            cooling-device = <&gpufreq_cool0 0 4>;
-+        };
-+        gpucore_cooling_map {
-+            cooling-device = <&gpucore_cool0 0 2>;
-+        };
-+    };
++	cooling-maps {
++		/delete-node/ cpucore_cooling_map0;
++		cpufreq_cooling_map0 {
++			cooling-device = <&cpufreq_cool0 0 10>;
++		};
++		cpufreq_cooling_map1 {
++			cooling-device = <&cpufreq_cool1 0 9>;
++		};
++		cpucore_cooling_map {
++			trip = <&pcontrol>;
++			cooling-device = <&cpucore_cool 0 5>;
++			contribution = <1024>;
++		};
++		gpufreq_cooling_map {
++			cooling-device = <&gpufreq_cool0 0 4>;
++		};
++		gpucore_cooling_map {
++			cooling-device = <&gpucore_cool0 0 2>;
++		};
++	};
 +};
 \ No newline at end of file
 diff --git a/arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi b/arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
 new file mode 100755
-index 000000000000..cd5c528a181e
+index 000000000000..133fba0ef047
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
 @@ -0,0 +1,218 @@
@@ -1241,31 +1244,31 @@ index 000000000000..cd5c528a181e
 +		button@0 {
 +			label = "GPIO BTN-VOLUP";
 +			linux,code = <KEY_VOLUMEUP>;
-+                        gpios = <&gpio GPIOX_8 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio GPIOX_8 GPIO_ACTIVE_LOW>;
 +		};
 +		button@1 {
 +			label = "GPIO BTN-VOLDN";
 +			linux,code = <KEY_VOLUMEDOWN>;
-+                        gpios = <&gpio GPIOX_9 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio GPIOX_9 GPIO_ACTIVE_LOW>;
 +		};
 +	};
 +
 +	joypad: gou_joypad {
-+                compatible = "odroidgou-joypad";
++		compatible = "odroidgou-joypad";
 +		status = "okay";
 +
-+                joypad-name = "GO-Ultra Gamepad";
-+                joypad-product = <0x1000>;
-+                joypad-revision = <0x0100>;
++		joypad-name = "GO-Ultra Gamepad";
++		joypad-product = <0x1000>;
++		joypad-revision = <0x0100>;
 +
-+                /*
-+                  - odroidgou-joypad sysfs list -
++		/*
++		   - odroidgou-joypad sysfs list -
 +		   * for poll device interval(ms)
 +		   /sys/devices/platform/gou_joypad/poll_interval [rw]
 +		   ex) echo 20 > poll_interval
-+                   * for button-adc-fuzz
++			* for button-adc-fuzz
 +		   /sys/devices/platform/gou_joypad/adc_fuzz [r]
-+                   * for button-adc-flat
++			* for button-adc-flat
 +		   /sys/devices/platform/gou_joypad/adc_flat [r]
 +
 +		   * for report control(1:enable, 0:disable)
@@ -1273,17 +1276,17 @@ index 000000000000..cd5c528a181e
 +		   * for adc calibration value setup(current adcs value -> cal value)
 +		   /sys/devices/platform/gou_joypad/adc_cal [rw]
 +		   ex) echo 0 > adc_cal
-+                */
++		*/
 +
 +		/* gpio pincontrol setup */
-+                /* pinctrl-names = "default"; */
-+                /* pinctrl-0 = <&key_all_pins>; */
++		/* pinctrl-names = "default"; */
++		/* pinctrl-0 = <&key_all_pins>; */
 +
 +		/* Analog mux define */
 +		io-channels = <&saradc SARADC_CH0>,
-+			      <&saradc SARADC_CH1>,
-+			      <&saradc SARADC_CH2>,
-+			      <&saradc SARADC_CH3>;
++					<&saradc SARADC_CH1>,
++					<&saradc SARADC_CH2>,
++					<&saradc SARADC_CH3>;
 +		io-channel-names = "key-RY", "key-RX", "key-LY", "key-LX";
 +
 +		/* adc calculate scale */
@@ -1338,104 +1341,104 @@ index 000000000000..cd5c528a181e
 +		|              |-------------------|             |
 +		|  sw11 sw12              |   |       sw13 sw14  |
 +		|-------------------------|uSD|------------------| */
-+                /*  joypad driver is poll-device driver.
-+                    poll-device is does not support wakeup-source.
++		/*  joypad driver is poll-device driver.
++			poll-device is does not support wakeup-source.
 +		*/
-+                sw1 {
-+                        gpios = <&gpio GPIOX_0 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO DPAD-UP";
-+                        linux,code = <BTN_DPAD_UP>; // 0x220
-+                };
-+                sw2 {
-+                        gpios = <&gpio GPIOX_1 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO DPAD-DOWN";
-+                        linux,code = <BTN_DPAD_DOWN>; // 0x221
-+                };
-+                sw3 {
-+                        gpios = <&gpio GPIOX_2 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO DPAD-LEFT";
-+                        linux,code = <BTN_DPAD_LEFT>; // 0x222
-+                };
-+                sw4 {
-+                        gpios = <&gpio GPIOX_3 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO DPAD-RIGHT";
-+                        linux,code = <BTN_DPAD_RIGHT>; // 0x223
-+                };
-+                sw5 {
-+                        gpios = <&gpio GPIOX_4 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO BTN-A";
-+                        linux,code = <BTN_EAST>; // 0x131
-+                };
-+                sw6 {
-+                        gpios = <&gpio GPIOX_5 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO BTN-B";
-+                        linux,code = <BTN_SOUTH>; // 0x130
-+                };
-+                sw7 {
-+                        gpios = <&gpio GPIOX_6 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO BTN-Y";
-+                        linux,code = <BTN_WEST>; // 0x134
-+                };
-+                sw8 {
-+                        gpios = <&gpio GPIOX_7 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO BTN-X";
-+                        linux,code = <BTN_NORTH>; // 0x133
-+                };
-+                sw11 {
-+                        gpios = <&gpio GPIOX_10 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO F2";
-+                        linux,code = <BTN_TRIGGER_HAPPY2>; // 0x2c2
-+                };
-+                sw12 {
-+                        gpios = <&gpio GPIOX_11 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO F3";
-+                        linux,code = <BTN_TRIGGER_HAPPY3>; // 0x2c3
-+                };
-+                sw13 {
-+                        gpios = <&gpio GPIOX_12 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO F4";
-+                        linux,code = <BTN_TRIGGER_HAPPY4>; // 0x2c4
-+                };
-+                sw14 {
-+                        gpios = <&gpio GPIOX_13 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO F5";
-+                        linux,code = <BTN_TRIGGER_HAPPY5>; // 0x13c
-+                };
-+                sw15 {
-+                        gpios = <&gpio GPIOX_14 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO TOP-LEFT";
-+                        linux,code = <BTN_TL>; // 0x02
-+                };
-+                sw16 {
-+                        gpios = <&gpio GPIOX_15 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO TOP-RIGHT";
-+                        linux,code = <BTN_TR>; // 0x05
-+                };
-+                sw17 {
-+                        gpios = <&gpio GPIOX_16 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO F6";
-+                        linux,code = <BTN_TRIGGER_HAPPY6>;
-+                };
-+                sw18 {
-+                        gpios = <&gpio GPIOX_17 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO F1";
-+                        linux,code = <BTN_TRIGGER_HAPPY1>;
-+                };
-+                sw19 {
-+                        gpios = <&gpio GPIOX_18 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO TOP-RIGHT2";
-+                        linux,code = <BTN_TR2>;
-+                };
-+                sw20 {
-+                        gpios = <&gpio GPIOX_19 GPIO_ACTIVE_LOW>;
-+                        label = "GPIO TOP-LEFT2";
-+                        linux,code = <BTN_TL2>;
-+                };
-+        };
++		sw1 {
++			gpios = <&gpio GPIOX_0 GPIO_ACTIVE_LOW>;
++			label = "GPIO DPAD-UP";
++			linux,code = <BTN_DPAD_UP>; // 0x220
++		};
++		sw2 {
++			gpios = <&gpio GPIOX_1 GPIO_ACTIVE_LOW>;
++			label = "GPIO DPAD-DOWN";
++			linux,code = <BTN_DPAD_DOWN>; // 0x221
++		};
++		sw3 {
++			gpios = <&gpio GPIOX_2 GPIO_ACTIVE_LOW>;
++			label = "GPIO DPAD-LEFT";
++			linux,code = <BTN_DPAD_LEFT>; // 0x222
++		};
++		sw4 {
++			gpios = <&gpio GPIOX_3 GPIO_ACTIVE_LOW>;
++			label = "GPIO DPAD-RIGHT";
++			linux,code = <BTN_DPAD_RIGHT>; // 0x223
++		};
++		sw5 {
++			gpios = <&gpio GPIOX_4 GPIO_ACTIVE_LOW>;
++			label = "GPIO BTN-A";
++			linux,code = <BTN_EAST>; // 0x131
++		};
++		sw6 {
++			gpios = <&gpio GPIOX_5 GPIO_ACTIVE_LOW>;
++			label = "GPIO BTN-B";
++			linux,code = <BTN_SOUTH>; // 0x130
++		};
++		sw7 {
++			gpios = <&gpio GPIOX_6 GPIO_ACTIVE_LOW>;
++			label = "GPIO BTN-Y";
++			linux,code = <BTN_WEST>; // 0x134
++		};
++		sw8 {
++			gpios = <&gpio GPIOX_7 GPIO_ACTIVE_LOW>;
++			label = "GPIO BTN-X";
++			linux,code = <BTN_NORTH>; // 0x133
++		};
++		sw11 {
++			gpios = <&gpio GPIOX_10 GPIO_ACTIVE_LOW>;
++			label = "GPIO F2";
++			linux,code = <BTN_TRIGGER_HAPPY2>; // 0x2c2
++		};
++		sw12 {
++			gpios = <&gpio GPIOX_11 GPIO_ACTIVE_LOW>;
++			label = "GPIO F3";
++			linux,code = <BTN_TRIGGER_HAPPY3>; // 0x2c3
++		};
++		sw13 {
++			gpios = <&gpio GPIOX_12 GPIO_ACTIVE_LOW>;
++			label = "GPIO F4";
++			linux,code = <BTN_TRIGGER_HAPPY4>; // 0x2c4
++		};
++		sw14 {
++			gpios = <&gpio GPIOX_13 GPIO_ACTIVE_LOW>;
++			label = "GPIO F5";
++			linux,code = <BTN_TRIGGER_HAPPY5>; // 0x13c
++		};
++		sw15 {
++			gpios = <&gpio GPIOX_14 GPIO_ACTIVE_LOW>;
++			label = "GPIO TOP-LEFT";
++			linux,code = <BTN_TL>; // 0x02
++		};
++		sw16 {
++			gpios = <&gpio GPIOX_15 GPIO_ACTIVE_LOW>;
++			label = "GPIO TOP-RIGHT";
++			linux,code = <BTN_TR>; // 0x05
++		};
++		sw17 {
++			gpios = <&gpio GPIOX_16 GPIO_ACTIVE_LOW>;
++			label = "GPIO F6";
++			linux,code = <BTN_TRIGGER_HAPPY6>;
++		};
++		sw18 {
++			gpios = <&gpio GPIOX_17 GPIO_ACTIVE_LOW>;
++			label = "GPIO F1";
++			linux,code = <BTN_TRIGGER_HAPPY1>;
++		};
++		sw19 {
++			gpios = <&gpio GPIOX_18 GPIO_ACTIVE_LOW>;
++			label = "GPIO TOP-RIGHT2";
++			linux,code = <BTN_TR2>;
++		};
++		sw20 {
++			gpios = <&gpio GPIOX_19 GPIO_ACTIVE_LOW>;
++			label = "GPIO TOP-LEFT2";
++			linux,code = <BTN_TL2>;
++		};
++	};
 +};
 diff --git a/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi b/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
 new file mode 100755
-index 000000000000..5dbaf2862af4
+index 000000000000..1b2485ef90f8
 --- /dev/null
 +++ b/arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
 @@ -0,0 +1,214 @@
@@ -1483,9 +1486,9 @@ index 000000000000..5dbaf2862af4
 +		clk_path = <1>; /* default gp0 pll */
 +
 +		/* power type:
-+		 *    (0=cpu_gpio, 1=pmu_gpio, 2=signal,3=extern, 0xff=ending)
++		 *	(0=cpu_gpio, 1=pmu_gpio, 2=signal,3=extern, 0xff=ending)
 +		 * power index:
-+		 *    (point gpios_index, or extern_index,0xff=invalid)
++		 *	(point gpios_index, or extern_index,0xff=invalid)
 +		 * power value:(0=output low, 1=output high, 2=input)
 +		 * power delay:(unit in ms)
 +		 */
@@ -1558,9 +1561,9 @@ index 000000000000..5dbaf2862af4
 +				0x29  3 0xC2 0x31 0x08
 +				0x23  2 0xCC 0x10
 +				0x29 17 0xB0 0x00 0x0D 0x14 0x0D 0x10 0x05 0x02 0x08
-+				        0x08 0x1E 0x05 0x13 0x11 0xA3 0x29 0x18
++						0x08 0x1E 0x05 0x13 0x11 0xA3 0x29 0x18
 +				0x29 17 0xB1 0x00 0x0C 0x14 0x0C 0x10 0x05 0x03 0x08
-+				        0x07 0x20 0x05 0x13 0x11 0xA4 0x29 0x18
++						0x07 0x20 0x05 0x13 0x11 0xA4 0x29 0x18
 +				0x29  6 0xFF 0x77 0x01 0x00 0x00 0x11
 +				0x23  2 0xB0 0x6C
 +				0x23  2 0xB1 0x43
@@ -1583,15 +1586,15 @@ index 000000000000..5dbaf2862af4
 +				0x29  5 0xE3 0x00 0x00 0x33 0x33
 +				0x29  3 0xE4 0x44 0x44
 +				0x29 17 0xE5 0x0E 0x60 0xA0 0xA0 0x10 0x60 0xA0 0xA0
-+				        0x0A 0x60 0xA0 0xA0 0x0C 0x60 0xA0 0xA0
++						0x0A 0x60 0xA0 0xA0 0x0C 0x60 0xA0 0xA0
 +				0x29  5 0xE6 0x00 0x00 0x33 0x33
 +				0x29  3 0xE7 0x44 0x44
 +				0x29 17 0xE8 0x0D 0x60 0xA0 0xA0 0x0F 0x60 0xA0 0xA0
-+				        0x09 0x60 0xA0 0xA0 0x0B 0x60 0xA0 0xA0
++						0x09 0x60 0xA0 0xA0 0x0B 0x60 0xA0 0xA0
 +				0x29  8 0xEB 0x02 0x01 0xE4 0xE4 0x44 0x00 0x40
 +				0x29  3 0xEC 0x02 0x01
 +				0x29 17 0xED 0xAB 0x89 0x76 0x54 0x01 0xFF 0xFF 0xFF
-+				        0xFF 0xFF 0xFF 0x10 0x45 0x67 0x98 0xBA
++						0xFF 0xFF 0xFF 0x10 0x45 0x67 0x98 0xBA
 +				0x29  6 0xFF 0x77 0x01 0x00 0x00 0x00
 +				0x23  2 0x3A 0x70
 +				0x23  2 0x53 0xEC
@@ -1601,11 +1604,11 @@ index 000000000000..5dbaf2862af4
 +				0xfd  1 50	/* delay (ms) */
 +				0xff  0>; /*ending*/
 +			init_off = <
-+				0x05 1 0x28 /* display off */
-+				0xfd 1 10   /* delay 10ms */
-+				0x05 1 0x10 /* sleep in */
-+				0xfd 1 150  /* delay 150ms */
-+				0xff 0>;    /*ending*/
++				0x05 1 0x28	/* display off */
++				0xfd 1 10	/* delay 10ms */
++				0x05 1 0x10	/* sleep in */
++				0xfd 1 150	/* delay 150ms */
++				0xff 0>;	/*ending*/
 +		};
 +	};
 +	backlight: backlight {
@@ -2135,7 +2138,7 @@ index 000000000000..a244975e5f95
 +	};
 +};
 diff --git a/arch/arm64/kernel/setup.c b/arch/arm64/kernel/setup.c
-index 5b15911709aa..e41f68ad0832 100644
+index 5b15911709aa..a8b443648057 100644
 --- a/arch/arm64/kernel/setup.c
 +++ b/arch/arm64/kernel/setup.c
 @@ -69,6 +69,8 @@ phys_addr_t __fdt_pointer __initdata;
@@ -2154,16 +2157,16 @@ index 5b15911709aa..e41f68ad0832 100644
 -	if (name_dtid)
 +	if (name_dtid) {
  		pr_info("CoreELEC dt-id: %s\n", name_dtid);
-+        if (!strcmp(name_dtid, "g12b_s922x_odroid_go_ultra")) {
-+            emuelec_is_ogu = true;
-+            pr_info("EmuELEC OGU: Warning, OGU on CE kernel is still under heavy development, prepare for major breaks :) - 7Ji");
-+        }
-+    }
++		if (!strcmp(name_dtid, "g12b_s922x_odroid_go_ultra")) {
++			emuelec_is_ogu = true;
++			pr_info("EmuELEC OGU: Warning, OGU on CE kernel is still under heavy development, prepare for major breaks :) - 7Ji");
++		}
++	}
  
  	name = of_flat_dt_get_machine_name();
  	if (!name)
 diff --git a/drivers/amlogic/media/osd/osd_fb.c b/drivers/amlogic/media/osd/osd_fb.c
-index 192948b9c0b9..13b254eb5291 100644
+index 192948b9c0b9..5cfed6201b29 100644
 --- a/drivers/amlogic/media/osd/osd_fb.c
 +++ b/drivers/amlogic/media/osd/osd_fb.c
 @@ -50,6 +50,7 @@
@@ -2190,28 +2193,28 @@ index 192948b9c0b9..13b254eb5291 100644
 -					fb_def_var[index].bits_per_pixel);
 -				if (fb_def_var[index].bits_per_pixel > 32)
 -					fb_def_var[index].bits_per_pixel = 32;
-+                // if (emuelec_is_ogu) {
-+                //     osd_log_info("OGU logic, force OSD 480 854 480 1708 32");
-+                //     fb_def_var[index].xres = 480;
-+                //     fb_def_var[index].yres = 854;
-+                //     fb_def_var[index].xres_virtual = 480;
-+                //     fb_def_var[index].yres_virtual = 1708;
-+                //     fb_def_var[index].bits_per_pixel = 32;
-+                // } else {
-+                    osd_log_info("Using vinfo %u %u %u %u %u as fbdef\n", var_screeninfo[0], var_screeninfo[1], var_screeninfo[2], var_screeninfo[3], var_screeninfo[4]);
-+                    fb_def_var[index].xres = var_screeninfo[0];
-+                    fb_def_var[index].yres = var_screeninfo[1];
-+                    fb_def_var[index].xres_virtual =
-+                        var_screeninfo[2];
-+                    fb_def_var[index].yres_virtual =
-+                        var_screeninfo[3];
-+                    fb_def_var[index].bits_per_pixel =
-+                        var_screeninfo[4];
-+                    osd_log_info("init fbdev bpp is:%d\n",
-+                        fb_def_var[index].bits_per_pixel);
-+                    if (fb_def_var[index].bits_per_pixel > 32)
-+                        fb_def_var[index].bits_per_pixel = 32;
-+                // }
++				// if (emuelec_is_ogu) {
++				//	 osd_log_info("OGU logic, force OSD 480 854 480 1708 32");
++				//	 fb_def_var[index].xres = 480;
++				//	 fb_def_var[index].yres = 854;
++				//	 fb_def_var[index].xres_virtual = 480;
++				//	 fb_def_var[index].yres_virtual = 1708;
++				//	 fb_def_var[index].bits_per_pixel = 32;
++				// } else {
++					osd_log_info("Using vinfo %u %u %u %u %u as fbdef\n", var_screeninfo[0], var_screeninfo[1], var_screeninfo[2], var_screeninfo[3], var_screeninfo[4]);
++					fb_def_var[index].xres = var_screeninfo[0];
++					fb_def_var[index].yres = var_screeninfo[1];
++					fb_def_var[index].xres_virtual =
++						var_screeninfo[2];
++					fb_def_var[index].yres_virtual =
++						var_screeninfo[3];
++					fb_def_var[index].bits_per_pixel =
++						var_screeninfo[4];
++					osd_log_info("init fbdev bpp is:%d\n",
++						fb_def_var[index].bits_per_pixel);
++					if (fb_def_var[index].bits_per_pixel > 32)
++						fb_def_var[index].bits_per_pixel = 32;
++				// }
  			}
  		}
  
@@ -2244,7 +2247,7 @@ index c66d30e2d696..4c6d0c8971ad 100644
  module_param(log_level, int, 0644);
  
 diff --git a/drivers/amlogic/media/vout/lcd/lcd_extern/lcd_extern.c b/drivers/amlogic/media/vout/lcd/lcd_extern/lcd_extern.c
-index 27c38b6379fa..05ac16fdfc94 100644
+index 27c38b6379fa..283ac5e1be27 100644
 --- a/drivers/amlogic/media/vout/lcd/lcd_extern/lcd_extern.c
 +++ b/drivers/amlogic/media/vout/lcd/lcd_extern/lcd_extern.c
 @@ -28,6 +28,7 @@
@@ -2259,25 +2262,33 @@ index 27c38b6379fa..05ac16fdfc94 100644
  {
  	int ret = 0;
  
-+    if (emuelec_is_ogu)
-+        EXTPR("%s: OGU logic, trying to add MIPI driver for config %s\n", __func__, ext_drv->config->name);
++	if (emuelec_is_ogu)
++		EXTPR("%s: OGU logic, trying to add MIPI driver for config %s\n", __func__, ext_drv->config->name);
 +
  	if ((strcmp(ext_drv->config->name, "mipi_default") == 0) ||
  		(strcmp(ext_drv->config->name, "ext_default") == 0)) {
  		if (ext_drv->config->cmd_size != LCD_EXT_CMD_SIZE_DYNAMIC) {
-@@ -2205,6 +2209,10 @@ static int aml_lcd_extern_probe(struct platform_device *pdev)
+@@ -2205,13 +2209,17 @@ static int aml_lcd_extern_probe(struct platform_device *pdev)
  
  	ret = lcd_extern_common_get_config();
  	if (ret == 0) {
-+        if (emuelec_is_ogu) {
-+            EXTPR("OGU logic, assuming 1 LCD extern\n");
-+            lcd_extern_drv_cnt = 1;
-+        }
++		if (emuelec_is_ogu) {
++			EXTPR("OGU logic, assuming 1 LCD extern\n");
++			lcd_extern_drv_cnt = 1;
++		}
  		for (i = 0; i < lcd_extern_drv_cnt; i++) {
  			extern_config = lcd_extern_get_config_load
  				(lcd_extern_index_lut[i]);
+ 			if (!extern_config)
+ 				continue;
+ 			lcd_extern_add_driver(extern_config,
+-					      lcd_extern_index_lut[i]);
++								lcd_extern_index_lut[i]);
+ 		}
+ 	}
+ 
 diff --git a/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c b/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
-index 15e0d7989ba8..a1c62d6f23f3 100644
+index 15e0d7989ba8..469db3571991 100644
 --- a/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
 +++ b/drivers/amlogic/media/vout/lcd/lcd_extern/mipi_ST7701.c
 @@ -25,7 +25,9 @@
@@ -2290,14 +2301,14 @@ index 15e0d7989ba8..a1c62d6f23f3 100644
  #include "lcd_extern.h"
  
  #define LCD_EXTERN_NAME			"mipi_ST7701"
-@@ -34,7 +36,61 @@
+@@ -34,11 +36,65 @@
   * format:  data_type, num, data....
   * special: data_type=0xff, num<0xff means delay ms, num=0xff means ending.
   */
 -static unsigned char mipi_init_on_table[] = {
 +static unsigned char mipi_init_on_table_ogu[] = {
 +	0x13, 1, 0x01,
-+	0xfd, 1, 5,	/* delay (ms) */
++	0xfd, 1, 5,		/* delay (ms) */
 +	0x13, 1, 0x11,
 +	0xfd, 1, 250,	/* delay (ms) */
 +
@@ -2307,9 +2318,9 @@ index 15e0d7989ba8..a1c62d6f23f3 100644
 +	0x29, 3, 0xC2, 0x31, 0x08,
 +	0x23, 2, 0xCC, 0x10,
 +	0x29,17, 0xB0, 0x00, 0x0D, 0x14, 0x0D, 0x10, 0x05, 0x02, 0x08,
-+	         0x08, 0x1E, 0x05, 0x13, 0x11, 0xA3, 0x29, 0x18,
++			 0x08, 0x1E, 0x05, 0x13, 0x11, 0xA3, 0x29, 0x18,
 +	0x29,17, 0xB1, 0x00, 0x0C, 0x14, 0x0C, 0x10, 0x05, 0x03, 0x08,
-+	         0x07, 0x20, 0x05, 0x13, 0x11, 0xA4, 0x29, 0x18,
++			 0x07, 0x20, 0x05, 0x13, 0x11, 0xA4, 0x29, 0x18,
 +	0x29, 6, 0xFF, 0x77, 0x01, 0x00, 0x00, 0x11,
 +	0x23, 2, 0xB0, 0x6C,
 +	0x23, 2, 0xB1, 0x43,
@@ -2330,15 +2341,15 @@ index 15e0d7989ba8..a1c62d6f23f3 100644
 +	0x29, 5, 0xE3, 0x00, 0x00, 0x33, 0x33,
 +	0x29, 3, 0xE4, 0x44, 0x44,
 +	0x29,17, 0xE5, 0x0E, 0x60, 0xA0, 0xA0, 0x10, 0x60, 0xA0, 0xA0,
-+	         0x0A, 0x60, 0xA0, 0xA0, 0x0C, 0x60, 0xA0, 0xA0,
++			 0x0A, 0x60, 0xA0, 0xA0, 0x0C, 0x60, 0xA0, 0xA0,
 +	0x29, 5, 0xE6, 0x00, 0x00, 0x33, 0x33,
 +	0x29, 3, 0xE7, 0x44, 0x44,
 +	0x29,17, 0xE8, 0x0D, 0x60, 0xA0, 0xA0, 0x0F, 0x60, 0xA0, 0xA0,
-+	         0x09, 0x60, 0xA0, 0xA0, 0x0B, 0x60, 0xA0, 0xA0,
++			 0x09, 0x60, 0xA0, 0xA0, 0x0B, 0x60, 0xA0, 0xA0,
 +	0x29, 8, 0xEB, 0x02, 0x01, 0xE4, 0xE4, 0x44, 0x00, 0x40,
 +	0x29, 3, 0xEC, 0x02, 0x01,
 +	0x29,17, 0xED, 0xAB, 0x89, 0x76, 0x54, 0x01, 0xFF, 0xFF, 0xFF,
-+	         0xFF, 0xFF, 0xFF, 0x10, 0x45, 0x67, 0x98, 0xBA,
++			 0xFF, 0xFF, 0xFF, 0x10, 0x45, 0x67, 0x98, 0xBA,
 +	0x29, 6, 0xFF, 0x77, 0x01, 0x00, 0x00, 0x00,
 +	0x23, 2, 0x3A, 0x70,
 +	0x23, 2, 0x53, 0xEC,
@@ -2353,7 +2364,37 @@ index 15e0d7989ba8..a1c62d6f23f3 100644
  	0x13, 1, 0x11,
  	//0x13, 1, 0x21,
  	//0x23, 2, 0x36, 0x00,
-@@ -98,7 +154,15 @@ static unsigned char mipi_init_on_table[] = {
+-	0xff, 200,     /* delay(ms) */
++	0xff, 200,	 /* delay(ms) */
+ 	0x29, 6, 0xff, 0x77, 0x01, 0x00, 0x00, 0x10,
+ 	0x29, 3, 0xc0, 0xe9, 0x03,
+ 	0x29, 3, 0xc1, 0x11, 0x02,
+@@ -66,12 +122,12 @@ static unsigned char mipi_init_on_table[] = {
+ 	0x23, 2, 0xd0, 0x88,
+ 
+ 	//-------End Power Control Registers Initial --
+-	0xff, 100,     /* delay(ms) */
++	0xff, 100,	 /* delay(ms) */
+ 
+ 	//-----------GIP Setting---------------
+ 	0x29, 4, 0xe0, 0x00, 0x00, 0x02,
+ 	0x29, 12, 0xe1, 0x08, 0x00, 0x0a, 0x00, 0x07,
+-		0x00, 0x09, 0x00, 0x00, 0x33, 0x33,
++			0x00, 0x09, 0x00, 0x00, 0x33, 0x33,
+ 	0x29, 14, 0xe2, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+ 	0x29, 5, 0xe3, 0x00, 0x00, 0x33, 0x33,
+@@ -90,19 +146,27 @@ static unsigned char mipi_init_on_table[] = {
+ 		0xff, 0xff, 0xff, 0xff, 0x10, 0x45, 0x67, 0x98, 0xba,
+ 
+ 	//------- Power Control Registers Initial End-----
+-	0xff, 10,     /* delay(ms) */
++	0xff, 10,	 /* delay(ms) */
+ 	0x29, 6, 0xff, 0x77, 0x01, 0x00, 0x00, 0x00,
+ 	0x13, 1, 0x29,
+ 	//0x13, 1, 0x2c,
+-	0xff, 200,     /* delay(ms) */
++	0xff, 200,	 /* delay(ms) */
  	0xff, 0xff,   /* ending flag */
  };
  
@@ -2368,8 +2409,14 @@ index 15e0d7989ba8..a1c62d6f23f3 100644
 +
 +static unsigned char mipi_init_off_table_generic[] = {
  	0x05, 1, 0x28, /* display off */
- 	0xff, 10,      /* delay 10ms */
+-	0xff, 10,      /* delay 10ms */
++	0xff, 10,	  /* delay 10ms */
  	0x05, 1, 0x10, /* sleep in */
+-	0xff, 150,      /* delay 150ms */
++	0xff, 150,	  /* delay 150ms */
+ 	0xff, 0xff,   /* ending flag */
+ };
+ 
 @@ -114,10 +178,20 @@ static int lcd_extern_driver_update(struct aml_lcd_extern_driver_s *ext_drv)
  	}
  
@@ -2379,51 +2426,103 @@ index 15e0d7989ba8..a1c62d6f23f3 100644
 -	ext_drv->config->table_init_off = &mipi_init_off_table[0];
 -	ext_drv->config->table_init_off_cnt  = sizeof(mipi_init_off_table);
 +
-+    if (emuelec_is_ogu) {
-+        EXTPR("OGU ST7001 update\n");
-+        ext_drv->config->table_init_on  = &mipi_init_on_table_ogu[0];
-+        ext_drv->config->table_init_on_cnt  = sizeof(mipi_init_on_table_ogu);
-+        ext_drv->config->table_init_off = &mipi_init_off_table_ogu[0];
-+        ext_drv->config->table_init_off_cnt  = sizeof(mipi_init_off_table_ogu);
-+    } else {
-+        EXTPR("Generic ST7001 update\n");
-+        ext_drv->config->table_init_on  = &mipi_init_on_table_generic[0];
-+        ext_drv->config->table_init_on_cnt  = sizeof(mipi_init_on_table_generic);
-+        ext_drv->config->table_init_off = &mipi_init_off_table_generic[0];
-+        ext_drv->config->table_init_off_cnt  = sizeof(mipi_init_off_table_generic);
-+    }
++	if (emuelec_is_ogu) {
++		EXTPR("OGU ST7001 update\n");
++		ext_drv->config->table_init_on  = &mipi_init_on_table_ogu[0];
++		ext_drv->config->table_init_on_cnt  = sizeof(mipi_init_on_table_ogu);
++		ext_drv->config->table_init_off = &mipi_init_off_table_ogu[0];
++		ext_drv->config->table_init_off_cnt  = sizeof(mipi_init_off_table_ogu);
++	} else {
++		EXTPR("Generic ST7001 update\n");
++		ext_drv->config->table_init_on  = &mipi_init_on_table_generic[0];
++		ext_drv->config->table_init_on_cnt  = sizeof(mipi_init_on_table_generic);
++		ext_drv->config->table_init_off = &mipi_init_off_table_generic[0];
++		ext_drv->config->table_init_off_cnt  = sizeof(mipi_init_off_table_generic);
++	}
  
  	return 0;
  }
-@@ -125,8 +199,24 @@ static int lcd_extern_driver_update(struct aml_lcd_extern_driver_s *ext_drv)
+@@ -125,7 +199,23 @@ static int lcd_extern_driver_update(struct aml_lcd_extern_driver_s *ext_drv)
  int aml_lcd_extern_mipi_st7701_probe(struct aml_lcd_extern_driver_s *ext_drv)
  {
  	int ret = 0;
 -
--	ret = lcd_extern_driver_update(ext_drv);
-+    // char const *const ce_id = of_flat_dt_get_coreelec_dt_id();
-+    // int ogu = 0;
-+    // if (ce_id) {
-+    //     if (!strcmp(ce_id, "g12b_s922x_odroid_go_ultra")) {
-+    //         EXTPR("Device is OGU, running its specific init\n");
-+    //         ogu = 1;
-+    //     }
-+    // } else {
-+    //     EXTPR("Failed to get CE_ID to determine whether it's OGU or not\n");
-+    // }
-+    // if (of_property_read_string(of_root, "coreelec-dt-id", &model_name)) {
-+    //     if (lcd_debug_print_flag) {
-+	// 	    EXTPR("%s: %d\n", __func__, ret);
-+    //     }
-+    // } else if (!strcmp(model_name, "Hardkernel ODROID-GOU")) {
-+    //     ogu = true;
-+    // }
-+    ret = lcd_extern_driver_update(ext_drv);
++	// char const *const ce_id = of_flat_dt_get_coreelec_dt_id();
++	// int ogu = 0;
++	// if (ce_id) {
++	//	 if (!strcmp(ce_id, "g12b_s922x_odroid_go_ultra")) {
++	//		 EXTPR("Device is OGU, running its specific init\n");
++	//		 ogu = 1;
++	//	 }
++	// } else {
++	//	 EXTPR("Failed to get CE_ID to determine whether it's OGU or not\n");
++	// }
++	// if (of_property_read_string(of_root, "coreelec-dt-id", &model_name)) {
++	//	 if (lcd_debug_print_flag) {
++	// 		EXTPR("%s: %d\n", __func__, ret);
++	//	 }
++	// } else if (!strcmp(model_name, "Hardkernel ODROID-GOU")) {
++	//	 ogu = true;
++	// }
+ 	ret = lcd_extern_driver_update(ext_drv);
  
  	if (lcd_debug_print_flag)
- 		EXTPR("%s: %d\n", __func__, ret);
+diff --git a/drivers/amlogic/media/vout/lcd/lcd_tablet/lcd_tablet.c b/drivers/amlogic/media/vout/lcd/lcd_tablet/lcd_tablet.c
+index f5a6dc9c293f..d74aaa1f7949 100644
+--- a/drivers/amlogic/media/vout/lcd/lcd_tablet/lcd_tablet.c
++++ b/drivers/amlogic/media/vout/lcd/lcd_tablet/lcd_tablet.c
+@@ -507,6 +507,7 @@ static void lcd_tablet_vinfo_update_default(void)
+ 	unsigned int h_active, v_active, h_total, v_total;
+ 
+ 	if (!lcd_drv)
++		LCDERR("no lcd_drv\n");
+ 		return;
+ 
+ 	if (lcd_drv->lcd_info == NULL) {
+diff --git a/drivers/amlogic/media/vout/lcd/lcd_vout.c b/drivers/amlogic/media/vout/lcd/lcd_vout.c
+index 428fda515b1e..29f8bec42501 100644
+--- a/drivers/amlogic/media/vout/lcd/lcd_vout.c
++++ b/drivers/amlogic/media/vout/lcd/lcd_vout.c
+@@ -1089,11 +1089,13 @@ static void lcd_init_vout(void)
+ 	switch (lcd_driver->lcd_mode) {
+ #ifdef CONFIG_AMLOGIC_LCD_TV
+ 	case LCD_MODE_TV:
++		LCDPR("Initializing TV vout server\n");
+ 		lcd_tv_vout_server_init();
+ 		break;
+ #endif
+ #ifdef CONFIG_AMLOGIC_LCD_TABLET
+ 	case LCD_MODE_TABLET:
++		LCDPR("Initializing tablet vout server\n");
+ 		lcd_tablet_vout_server_init();
+ 		break;
+ #endif
+@@ -1358,8 +1360,8 @@ static int lcd_config_probe(struct platform_device *pdev)
+ 		break;
+ 	}
+ 
+-	LCDPR("detect mode: %s, fr_auto_policy: %d, key_valid: %d\n",
+-		str, lcd_driver->fr_auto_policy, lcd_driver->lcd_key_valid);
++	LCDPR("detect mode: %s, mode no: %u, fr_auto_policy: %d, key_valid: %d\n",
++		str, lcd_driver->lcd_mode, lcd_driver->fr_auto_policy, lcd_driver->lcd_key_valid);
+ 
+ 	ret = of_property_read_u32(lcd_driver->dev->of_node, "clk_path", &val);
+ 	if (ret) {
+diff --git a/drivers/amlogic/media/vout/vout_serve/vout_func.c b/drivers/amlogic/media/vout/vout_serve/vout_func.c
+index 08f2332bc972..fea13a8caa31 100644
+--- a/drivers/amlogic/media/vout/vout_serve/vout_func.c
++++ b/drivers/amlogic/media/vout/vout_serve/vout_func.c
+@@ -609,7 +609,7 @@ int vout_func_vout_register_server(int index, struct vout_server_s *mem_server)
+ 		VOUTERR("vout%d: server name is NULL\n", index);
+ 		return -1;
+ 	}
+-	/* VOUTPR("vout%d: register server: %s\n", index, mem_server->name);*/
++	VOUTPR("vout%d: register server: %s\n", index, mem_server->name);
+ 
+ 	mutex_lock(&vout_mutex);
+ 
 diff --git a/drivers/amlogic/media/vout/vout_serve/vout_serve.c b/drivers/amlogic/media/vout/vout_serve/vout_serve.c
-index 6e0f122578c0..f354f9f58f87 100644
+index 6e0f122578c0..4c7642c48dba 100644
 --- a/drivers/amlogic/media/vout/vout_serve/vout_serve.c
 +++ b/drivers/amlogic/media/vout/vout_serve/vout_serve.c
 @@ -62,7 +62,11 @@ static int early_resume_flag;
@@ -2443,10 +2542,10 @@ index 6e0f122578c0..f354f9f58f87 100644
  	vout_init_vmode = validate_vmode(local_name, frac);
  	if (vout_init_vmode >= VMODE_MAX) {
 +#ifdef CONFIG_AMLOGIC_LCD
-+        VOUTERR("no matched vout_init mode %s, force to panel\n",
++		VOUTERR("no matched vout_init mode %s, force to panel\n",
 +			vout_mode_uboot);
-+        snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", "panel");
-+        vout_init_vmode = validate_vmode("panel", frac);
++		snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", "panel");
++		vout_init_vmode = validate_vmode("panel", frac);
 +#else
  		VOUTERR("no matched vout_init mode %s, force to invalid\n",
  			vout_mode_uboot);
@@ -2458,8 +2557,23 @@ index 6e0f122578c0..f354f9f58f87 100644
  	} else { /* recover vout_mode_uboot */
  		snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", vout_mode_uboot);
  	}
+@@ -647,12 +658,12 @@ static ssize_t vout_vinfo_name_show(struct class *class,
+ 		struct class_attribute *attr, char *buf)
+ {
+ 	const struct vinfo_s *info = NULL;
+-	int ret = 0;
++	// int ret = 0;
+ 
+ 	info = get_current_vinfo();
+ 	if (info == NULL)
+ 		return sprintf(buf, "null");
+-	ret = sprintf(buf, "%s\n", info->name);
++	return sprintf(buf, "%s\n", info->name);
+ }
+ 
+ static struct class_attribute vout_class_attrs[] = {
 diff --git a/drivers/amlogic/mmc/aml_sd_emmc.c b/drivers/amlogic/mmc/aml_sd_emmc.c
-index 3fa135f65320..c69c3c2bdfbe 100644
+index 3fa135f65320..ff87dd46619b 100644
 --- a/drivers/amlogic/mmc/aml_sd_emmc.c
 +++ b/drivers/amlogic/mmc/aml_sd_emmc.c
 @@ -42,6 +42,7 @@
@@ -2475,25 +2589,25 @@ index 3fa135f65320..c69c3c2bdfbe 100644
  int aml_signal_voltage_switch(struct mmc_host *mmc, struct mmc_ios *ios)
  {
 -	return aml_sd_voltage_switch(mmc, ios->signal_voltage);
-+    if (emuelec_is_ogu) {
-+        pr_info("Voltage switch: OGU logic\n");
-+        struct amlsd_platform *pdata = mmc_priv(mmc);
-+        int ret = 0;
++	if (emuelec_is_ogu) {
++		pr_info("Voltage switch: OGU logic\n");
++		struct amlsd_platform *pdata = mmc_priv(mmc);
++		int ret = 0;
 +
-+        if (pdata->vol_switch) {
-+            ret = aml_sd_voltage_switch(mmc, ios->signal_voltage);
-+            if (ret)
-+                dev_warn(mmc_dev(mmc), "Voltage switch failed\n");
-+        } else {
-+            ret = mmc_regulator_set_vqmmc(mmc, ios);
-+            if (ret)
-+                dev_warn(mmc_dev(mmc), "Regulator switch failed\n");
-+        }
-+        return ret;
-+    } else {
-+        pr_info("Voltage switch: Generic logic\n");
-+        return aml_sd_voltage_switch(mmc, ios->signal_voltage);
-+    }
++		if (pdata->vol_switch) {
++			ret = aml_sd_voltage_switch(mmc, ios->signal_voltage);
++			if (ret)
++				dev_warn(mmc_dev(mmc), "Voltage switch failed\n");
++		} else {
++			ret = mmc_regulator_set_vqmmc(mmc, ios);
++			if (ret)
++				dev_warn(mmc_dev(mmc), "Regulator switch failed\n");
++		}
++		return ret;
++	} else {
++		pr_info("Voltage switch: Generic logic\n");
++		return aml_sd_voltage_switch(mmc, ios->signal_voltage);
++	}
  }
  
  /* Check if the card is pulling dat[0:3] low */
@@ -2502,10 +2616,10 @@ index 3fa135f65320..c69c3c2bdfbe 100644
  					+ (host->data->ds_pin_poll_en << 2));
  		}
 -
-+        if (emuelec_is_ogu) {
-+            pr_info("MMC probe: OGU logic, try to get supply from regulator\n");
-+            ret = mmc_regulator_get_supply(mmc);
-+        }
++		if (emuelec_is_ogu) {
++			pr_info("MMC probe: OGU logic, try to get supply from regulator\n");
++			ret = mmc_regulator_get_supply(mmc);
++		}
  		if (aml_card_type_mmc(pdata)
  				&& (host->ctrl_ver < 3))
  			/**set emmc tx_phase regs here base on dts**/
@@ -5626,14 +5740,14 @@ index 0f8acc5882a4..71bdc26a2c84 100644
 +MODULE_AUTHOR("Chen jianhong <chenjh@rock-chips.com>");
 +MODULE_DESCRIPTION("RK808 PMIC driver");
 diff --git a/drivers/pinctrl/Kconfig b/drivers/pinctrl/Kconfig
-index b0c0fa0444dd..33a74fd3297c 100644
+index b0c0fa0444dd..4c48e85a28cb 100644
 --- a/drivers/pinctrl/Kconfig
 +++ b/drivers/pinctrl/Kconfig
 @@ -255,6 +255,15 @@ config PINCTRL_ZYNQ
  	select GENERIC_PINCONF
  	help
  	  This selects the pinctrl driver for Xilinx Zynq.
-+      
++	  
 +config PINCTRL_RK805
 +	tristate "Pinctrl and GPIO driver for RK805 PMIC"
 +	depends on MFD_RK808
@@ -6353,7 +6467,7 @@ index 000000000000..8810aabb7555
 +MODULE_AUTHOR("Joseph Chen <chenjh@rock-chips.com>");
 +MODULE_LICENSE("GPL v2");
 diff --git a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
-index 0de9a958b29a..6eef9d9b996b 100644
+index 0de9a958b29a..0af76937c91f 100644
 --- a/drivers/power/supply/Kconfig
 +++ b/drivers/power/supply/Kconfig
 @@ -496,6 +496,22 @@ config BATTERY_RT5033
@@ -6375,7 +6489,7 @@ index 0de9a958b29a..6eef9d9b996b 100644
 +	help
 +	  If you say yes here you will get support for the charger of RK818 PMIC.
 +	  This driver can give support for Rk818 Charger Interface.
-+      
++	  
  config CHARGER_RT9455
  	tristate "Richtek RT9455 battery charger driver"
  	depends on I2C
@@ -13609,7 +13723,7 @@ index 35c9aada07c8..b84f0f210169 100644
  	if (ret) {
  		dev_err(&pdev->dev,
 diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
-index 9116cb293c7d..0f1c150a1d9d 100644
+index 9116cb293c7d..f3ef9325b095 100644
 --- a/include/linux/clk-provider.h
 +++ b/include/linux/clk-provider.h
 @@ -25,7 +25,8 @@
@@ -13618,7 +13732,7 @@ index 9116cb293c7d..0f1c150a1d9d 100644
  #define CLK_IGNORE_UNUSED	BIT(3) /* do not gate even if unused */
 -				/* unused */
 +				/* unused for CE kernel, but added from HK */
-+#define CLK_IS_ROOT               BIT(4) /* root clk, has no parent */
++#define CLK_IS_ROOT			BIT(4) /* root clk, has no parent */
  #define CLK_IS_BASIC		BIT(5) /* Basic clk, can't do a to_clk_foo() */
  #define CLK_GET_RATE_NOCACHE	BIT(6) /* do not use the cached clk rate */
  #define CLK_SET_RATE_NO_REPARENT BIT(7) /* don't re-parent on rate change */
@@ -14716,7 +14830,7 @@ index 1a9416a07efa..6256de96b7ff 100644
  
 +EXPORT_SYMBOL(cma_release);
 diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index 89a19097435d..8e13205a222f 100644
+index 89a19097435d..2e42483594ef 100644
 --- a/sound/soc/codecs/Kconfig
 +++ b/sound/soc/codecs/Kconfig
 @@ -104,6 +104,7 @@ config SND_SOC_ALL_CODECS
@@ -14735,7 +14849,7 @@ index 89a19097435d..8e13205a222f 100644
 +	tristate "Rockchip RK817 CODEC"
 +	depends on MFD_RK808
 +	select REGMAP_I2C
-+    
++	
  config SND_SOC_RL6231
  	tristate
  	default y if SND_SOC_RT5514=y
