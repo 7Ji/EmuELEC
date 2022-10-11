@@ -449,6 +449,8 @@ load_splash() {
           SWITCH_FRAMEBUFFER="1920 1080 1920 1080 32"
         elif [ "$SWITCH_FRAMEBUFFER" = "720" ]; then
           SWITCH_FRAMEBUFFER="1280 720 1280 720 32"
+        elif [ "$SWITCH_FRAMEBUFFER" = "ogu" ]; then
+          SWITCH_FRAMEBUFFER="480 854 480 1708 32"
         fi
 
         # Try setting a custom framebuffer resolution
