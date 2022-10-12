@@ -1,6 +1,6 @@
-From 68df993417132237e20f0f55c9befb2adb571c38 Mon Sep 17 00:00:00 2001
+From 98ecf341cee201fa066e93b47d78c1696b33e777 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Tue, 11 Oct 2022 15:45:54 +0800
+Date: Wed, 12 Oct 2022 18:08:20 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -17,7 +17,7 @@ Subject: [PATCH] OGU: introduce
  .../media/vout/lcd/lcd_tablet/lcd_tablet.c    |    1 +
  drivers/amlogic/media/vout/lcd/lcd_vout.c     |    6 +-
  .../amlogic/media/vout/vout_serve/vout_func.c |    2 +-
- .../media/vout/vout_serve/vout_serve.c        |   15 +-
+ .../media/vout/vout_serve/vout_serve.c        |   36 +-
  drivers/amlogic/mmc/aml_sd_emmc.c             |   26 +-
  drivers/base/dma-contiguous.c                 |    1 +
  drivers/clk/clk-rk808.c                       |   96 +-
@@ -50,7 +50,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 46 files changed, 14746 insertions(+), 309 deletions(-)
+ 46 files changed, 14760 insertions(+), 316 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -2522,42 +2522,62 @@ index 08f2332bc972..fea13a8caa31 100644
  	mutex_lock(&vout_mutex);
  
 diff --git a/drivers/amlogic/media/vout/vout_serve/vout_serve.c b/drivers/amlogic/media/vout/vout_serve/vout_serve.c
-index 6e0f122578c0..4c7642c48dba 100644
+index 6e0f122578c0..e675f093ae87 100644
 --- a/drivers/amlogic/media/vout/vout_serve/vout_serve.c
 +++ b/drivers/amlogic/media/vout/vout_serve/vout_serve.c
-@@ -62,7 +62,11 @@ static int early_resume_flag;
- #define VMODE_NAME_LEN_MAX    64
- static struct class *vout_class;
- static DEFINE_MUTEX(vout_serve_mutex);
+@@ -42,6 +42,8 @@
+ /* Amlogic Headers */
+ #include <linux/amlogic/media/vout/vout_notify.h>
+ 
++#include <linux/platform_data/emuelec.h>
++
+ /* Local Headers */
+ #include "vout_func.h"
+ #include "vout_reg.h"
+@@ -303,19 +305,35 @@ static int set_vout_init_mode(void)
+ 	enum vmode_e vmode;
+ 	unsigned int frac;
+ 	int ret = 0;
+-
 +#ifdef CONFIG_AMLOGIC_LCD
-+static char vout_mode_uboot[VMODE_NAME_LEN_MAX] = "panel";
-+#else
- static char vout_mode_uboot[VMODE_NAME_LEN_MAX] = "null";
++	if (emuelec_is_ogu) {
++		VOUTPR("%s: OGU logic: set vout_mode_uboot to panel\n", __func__);
++		snprintf(vout_mode_uboot, VMODE_NAME_LEN_MAX, "%s", "panel");
++	}
 +#endif
- static char vout_mode[VMODE_NAME_LEN_MAX] __nosavedata;
- static char local_name[VMODE_NAME_LEN_MAX] = {0};
- static u32 vout_init_vmode = VMODE_INIT_NULL;
-@@ -310,12 +314,19 @@ static int set_vout_init_mode(void)
+ 	memset(local_name, 0, sizeof(local_name));
+ 	snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", vout_mode_uboot);
+ 	frac = vout_parse_vout_name(local_name);
  
  	vout_init_vmode = validate_vmode(local_name, frac);
  	if (vout_init_vmode >= VMODE_MAX) {
+-		VOUTERR("no matched vout_init mode %s, force to invalid\n",
+-			vout_mode_uboot);
+-		nulldisp_index = 1;
+-		vout_init_vmode = nulldisp_vinfo[nulldisp_index].mode;
+-		snprintf(local_name, VMODE_NAME_LEN_MAX, "%s",
+-			 nulldisp_vinfo[nulldisp_index].name);
 +#ifdef CONFIG_AMLOGIC_LCD
-+		VOUTERR("no matched vout_init mode %s, force to panel\n",
-+			vout_mode_uboot);
-+		snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", "panel");
-+		vout_init_vmode = validate_vmode("panel", frac);
-+#else
- 		VOUTERR("no matched vout_init mode %s, force to invalid\n",
- 			vout_mode_uboot);
- 		nulldisp_index = 1;
- 		vout_init_vmode = nulldisp_vinfo[nulldisp_index].mode;
- 		snprintf(local_name, VMODE_NAME_LEN_MAX, "%s",
- 			 nulldisp_vinfo[nulldisp_index].name);
++		if (emuelec_is_ogu) {
++			VOUTERR("OGU logic: no matched vout_init mode %s, force to panel\n",
++				vout_mode_uboot);
++			snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", "panel");
++			vout_init_vmode = validate_vmode("panel", 0);
++		} else {
++#endif
++			VOUTERR("no matched vout_init mode %s, force to invalid\n",
++				vout_mode_uboot);
++			nulldisp_index = 1;
++			vout_init_vmode = nulldisp_vinfo[nulldisp_index].mode;
++			snprintf(local_name, VMODE_NAME_LEN_MAX, "%s",
++				nulldisp_vinfo[nulldisp_index].name);
++#ifdef CONFIG_AMLOGIC_LCD
++		}
 +#endif
  	} else { /* recover vout_mode_uboot */
  		snprintf(local_name, VMODE_NAME_LEN_MAX, "%s", vout_mode_uboot);
  	}
-@@ -647,12 +658,12 @@ static ssize_t vout_vinfo_name_show(struct class *class,
+@@ -647,12 +665,12 @@ static ssize_t vout_vinfo_name_show(struct class *class,
  		struct class_attribute *attr, char *buf)
  {
  	const struct vinfo_s *info = NULL;
