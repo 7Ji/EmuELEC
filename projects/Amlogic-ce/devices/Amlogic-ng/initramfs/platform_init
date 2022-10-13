@@ -70,6 +70,13 @@ case $display_mode in
   576*)            X=720  Y=576  ;;
   720p*)           X=1280 Y=720  ;;
   2160p*)          X=3840 Y=2160 ;;
+  panel*)
+    if [ "$(cat /proc/device-tree/coreelec-dt-id)" == 'g12b_s922x_odroid_go_ultra' ]; then
+      X=480   Y=854
+    else
+      X=1920  Y=1080
+    fi
+    ;;
   *)               X=1920 Y=1080 ;;
 esac
 
