@@ -1,6 +1,6 @@
-From 79a2f73ee5a8f528fe17e295332fa8fbd2bec85d Mon Sep 17 00:00:00 2001
+From 9bf39cb88941930887824dca5c08c6b7dbc31caf Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Thu, 13 Oct 2022 11:29:57 +0800
+Date: Thu, 13 Oct 2022 11:35:12 +0800
 Subject: [PATCH] OGU: introduce
 
 ---
@@ -39,6 +39,7 @@ Subject: [PATCH] OGU: introduce
  drivers/power/supply/rk818_charger.c          | 1991 +++++++++
  drivers/regulator/rk808-regulator.c           |  966 ++++-
  drivers/rtc/rtc-rk808.c                       |   95 +-
+ include/linux/amlogic/usbtype.h               |    1 +
  include/linux/clk-provider.h                  |    3 +-
  include/linux/extcon.h                        |    1 +
  include/linux/mfd/rk808.h                     |  856 +++-
@@ -51,7 +52,7 @@ Subject: [PATCH] OGU: introduce
  sound/soc/codecs/Makefile                     |    2 +
  sound/soc/codecs/rk817_codec.c                | 1291 ++++++
  sound/soc/codecs/rk817_codec.h                |  220 +
- 47 files changed, 14170 insertions(+), 302 deletions(-)
+ 48 files changed, 14171 insertions(+), 302 deletions(-)
  create mode 100644 arch/arm64/boot/dts/amlogic/g12b_s922x_odroid_go_ultra.dts
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_joypad.dtsi
  create mode 100755 arch/arm64/boot/dts/amlogic/meson64_gou_panel.dtsi
@@ -13162,6 +13163,16 @@ index 35c9aada07c8..81b057e6cb95 100644
  			   RTC_STATUS_MASK);
  	if (ret) {
  		dev_err(&pdev->dev,
+diff --git a/include/linux/amlogic/usbtype.h b/include/linux/amlogic/usbtype.h
+index 0dd7b13001fb..88bce91dd2ee 100644
+--- a/include/linux/amlogic/usbtype.h
++++ b/include/linux/amlogic/usbtype.h
+@@ -103,4 +103,5 @@ int device_status_v2(unsigned long usb_peri_reg);
+ extern int dwc_otg_power_register_notifier(struct notifier_block *nb);
+ extern int dwc_otg_power_unregister_notifier(struct notifier_block *nb);
+ extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
++extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
+ #endif
 diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
 index 9116cb293c7d..f3ef9325b095 100644
 --- a/include/linux/clk-provider.h
