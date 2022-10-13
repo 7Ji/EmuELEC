@@ -444,13 +444,13 @@ load_splash() {
 
     if [ -e /dev/fb0 ]; then
       # Set framebuffer to a custom resolution and/or fallback to default resolution (1024x768-32), if required.
-      if [ ! "$SWITCH_FRAMEBUFFER" = "no" ]; then
+      if [ "$(cat /proc/device-tree/coreelec-dt-id)" == 'g12b_s922x_odroid_go_ultra' ]; then
+        echo 'NEVER EVER TOUCH FB0 ON OGU, using OGU-specific load splash logic'
+      elif [ ! "$SWITCH_FRAMEBUFFER" = "no" ]; then
         if [ "$SWITCH_FRAMEBUFFER" = "1080" ]; then
           SWITCH_FRAMEBUFFER="1920 1080 1920 1080 32"
         elif [ "$SWITCH_FRAMEBUFFER" = "720" ]; then
           SWITCH_FRAMEBUFFER="1280 720 1280 720 32"
-        elif [ "$SWITCH_FRAMEBUFFER" = "ogu" ]; then
-          SWITCH_FRAMEBUFFER="480 854 480 1708 32"
         fi
 
         # Try setting a custom framebuffer resolution

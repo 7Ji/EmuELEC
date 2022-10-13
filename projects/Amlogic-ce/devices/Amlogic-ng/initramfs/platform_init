@@ -3,6 +3,17 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
 
+if [ "$(cat /proc/device-tree/coreelec-dt-id)" == 'g12b_s922x_odroid_go_ultra' ]; then
+  echo 'NEVER EVER TOUCH FB0 ON OGU, using OGU-specific platform-init logic'
+  fbset -fb /dev/fb1 -g 32 32 32 32 32
+  echo 0 > /sys/class/graphics/fb0/free_scale
+  echo 0 > /sys/class/graphics/fb1/free_scale
+  echo 1 > /sys/class/video/disable_video
+  echo 0 > /sys/class/graphics/fb0/blank
+  echo 1 > /sys/class/graphics/fb1/blank
+  exit 0
+fi
+
 display_mode=$(cat /sys/class/display/mode)
 # default values
 display_mode_user="1080p60hz"

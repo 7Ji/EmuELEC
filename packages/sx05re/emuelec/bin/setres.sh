@@ -21,6 +21,11 @@
 # 1080i50hz
 # 576cvbs
 
+if [ "$(cat /proc/device-tree/coreelec-dt-id)" == 'g12b_s922x_odroid_go_ultra' ]; then
+  echo 'NEVER EVER TOUCH FB0 ON OGU, assuming success'
+  exit 0
+fi
+
 # arg1, 1 = Hides, 0 = Show.
 show_buffer ()
 {
