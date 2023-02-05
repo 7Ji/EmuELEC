@@ -1,9 +1,10 @@
-From 8a14caebc0c3d81e6b9f1de46ec53b140200bba2 Mon Sep 17 00:00:00 2001
+From 872e1f2da672fa494895119c42924331d3e50162 Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Sun, 5 Feb 2023 22:56:03 +0800
+Date: Sun, 5 Feb 2023 23:15:37 +0800
 Subject: [PATCH] adapt to hybrid logic
 
 ---
+ es-app/CMakeLists.txt                    |   2 -
  es-app/src/ApiSystem.cpp                 |  69 -------
  es-app/src/ApiSystem.h                   |   3 -
  es-app/src/Win32ApiSystem.cpp            | 114 -----------
@@ -12,10 +13,23 @@ Subject: [PATCH] adapt to hybrid logic
  es-app/src/guis/GuiUpdate.cpp            | 231 -----------------------
  es-app/src/guis/GuiUpdate.h              |  46 -----
  es-app/src/services/HttpServerThread.cpp |   4 +-
- 8 files changed, 12 insertions(+), 530 deletions(-)
+ 9 files changed, 12 insertions(+), 532 deletions(-)
  delete mode 100644 es-app/src/guis/GuiUpdate.cpp
  delete mode 100644 es-app/src/guis/GuiUpdate.h
 
+diff --git a/es-app/CMakeLists.txt b/es-app/CMakeLists.txt
+index 7e9c7d00..e6939b07 100644
+--- a/es-app/CMakeLists.txt
++++ b/es-app/CMakeLists.txt
+@@ -51,8 +51,6 @@ set(ES_HEADERS
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiCollectionSystemsOptions.h
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackupStart.h # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInstallStart.h # batocera
+-    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiUpdate.h # batocera
+-    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiUpdate.cpp # batocera    
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackup.h # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackup.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInstall.h # batocera
 diff --git a/es-app/src/ApiSystem.cpp b/es-app/src/ApiSystem.cpp
 index 57578a03..d8b6fc86 100644
 --- a/es-app/src/ApiSystem.cpp
