@@ -1,0 +1,28 @@
+From 219bcb17738b2ff5b8069e62c7774357ce824da0 Mon Sep 17 00:00:00 2001
+From: 7Ji <pugokushin@gmail.com>
+Date: Sun, 5 Feb 2023 23:12:30 +0800
+Subject: [PATCH] adapt to hybrid logic
+
+---
+ addons/skin.estuary/xml/DialogButtonMenu.xml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/addons/skin.estuary/xml/DialogButtonMenu.xml b/addons/skin.estuary/xml/DialogButtonMenu.xml
+index 7d597ea..203acaf 100644
+--- a/addons/skin.estuary/xml/DialogButtonMenu.xml
++++ b/addons/skin.estuary/xml/DialogButtonMenu.xml
+@@ -53,6 +53,11 @@
+ 						<onclick>Reset()</onclick>
+ 						<visible>System.CanReboot</visible>
+ 					</item>
++					<item>
++						<label>Reboot to Hybrid/EE</label>
++						<onclick>System.ExecWait("/usr/sbin/hybrid_reboot_ee")</onclick>
++						<onclick>Reset()</onclick>
++					</item>
+ 					<item>
+ 						<label>Reboot from eMMC/NAND</label>
+ 						<onclick>System.ExecWait("/usr/sbin/rebootfromnand")</onclick>
+-- 
+2.39.1
+
