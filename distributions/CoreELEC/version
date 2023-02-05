@@ -5,7 +5,7 @@
   OS_MINOR="0"
 
 # OS_VERSION: OS Version
-  OS_VERSION="${OS_MAJOR}.${OS_MINOR}"
+  OS_VERSION="${OS_MAJOR}.${OS_MINOR}-hybrid"
 
 # OS_CODENAME: OS Codename
   OS_CODENAME="Nexus"
