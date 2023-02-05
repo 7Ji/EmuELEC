@@ -1,10 +1,10 @@
-From 872e1f2da672fa494895119c42924331d3e50162 Mon Sep 17 00:00:00 2001
+From dd6e6c97ea38510d6f2bcbf71bd55f1db5dd9c7f Mon Sep 17 00:00:00 2001
 From: 7Ji <pugokushin@gmail.com>
-Date: Sun, 5 Feb 2023 23:15:37 +0800
+Date: Sun, 5 Feb 2023 23:18:56 +0800
 Subject: [PATCH] adapt to hybrid logic
 
 ---
- es-app/CMakeLists.txt                    |   2 -
+ es-app/CMakeLists.txt                    |   3 -
  es-app/src/ApiSystem.cpp                 |  69 -------
  es-app/src/ApiSystem.h                   |   3 -
  es-app/src/Win32ApiSystem.cpp            | 114 -----------
@@ -13,12 +13,12 @@ Subject: [PATCH] adapt to hybrid logic
  es-app/src/guis/GuiUpdate.cpp            | 231 -----------------------
  es-app/src/guis/GuiUpdate.h              |  46 -----
  es-app/src/services/HttpServerThread.cpp |   4 +-
- 9 files changed, 12 insertions(+), 532 deletions(-)
+ 9 files changed, 12 insertions(+), 533 deletions(-)
  delete mode 100644 es-app/src/guis/GuiUpdate.cpp
  delete mode 100644 es-app/src/guis/GuiUpdate.h
 
 diff --git a/es-app/CMakeLists.txt b/es-app/CMakeLists.txt
-index 7e9c7d00..e6939b07 100644
+index 7e9c7d00..82a9b1af 100644
 --- a/es-app/CMakeLists.txt
 +++ b/es-app/CMakeLists.txt
 @@ -51,8 +51,6 @@ set(ES_HEADERS
@@ -30,6 +30,14 @@ index 7e9c7d00..e6939b07 100644
      ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackup.h # batocera
      ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackup.cpp # batocera
      ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInstall.h # batocera
+@@ -157,7 +155,6 @@ set(ES_SOURCES
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiCollectionSystemsOptions.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackupStart.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInstallStart.cpp # batocera
+-    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiUpdate.cpp # batocera    
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBackup.cpp # batocera
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInstall.cpp # batocera    
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiThemeInstaller.cpp
 diff --git a/es-app/src/ApiSystem.cpp b/es-app/src/ApiSystem.cpp
 index 57578a03..d8b6fc86 100644
 --- a/es-app/src/ApiSystem.cpp
