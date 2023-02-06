@@ -54,7 +54,6 @@ function do_mkimage() {
     SYSTEM_SIZE="${SYSTEM_SIZE}" \
     SYSTEM_PART_START="${SYSTEM_PART_START}" \
     OVA_SIZE="${OVA_SIZE}" \
-    SUBDEVICE="${SUBDEVICE}" \
     ${SCRIPTS}/mkimage
 }
 
@@ -381,14 +380,7 @@ if [ "${1}" = "release" -o "${1}" = "mkimage" -o "${1}" = "noobs" ]; then
         do_mkimage "${IMAGE_NAME}-${UBOOT_SYSTEM}"
       done
     else
-      if [ -n "${SUBDEVICES}" ]; then
-        [ "${PROJECT}" = "Amlogic-ce" ] && SUBDEVICES+=" Generic"
-        for SUBDEVICE in ${SUBDEVICES}; do
-          do_mkimage "${IMAGE_NAME}"
-        done
-      else
-        do_mkimage
-      fi
+      do_mkimage
     fi
   fi
 
