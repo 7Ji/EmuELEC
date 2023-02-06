@@ -30,9 +30,6 @@ STORAGE_SIZE=32 # STORAGE_SIZE must be >= 32 !
 DISK_START_PADDING=$(( (${SYSTEM_PART_START} + 2048 - 1) / 2048 ))
 DISK_SIZE=$(( ${DISK_START_PADDING} + ${SYSTEM_SIZE} + ${STORAGE_SIZE} + ${DISK_GPT_PADDING} ))
 DISK_BASENAME="${TARGET_IMG}/${IMAGE_NAME}"
-if [ -n "${SUBDEVICE}" ]; then
-  DISK_BASENAME="${DISK_BASENAME}-${SUBDEVICE}"
-fi
 DISK="${DISK_BASENAME}.img"
 
 # functions
@@ -236,7 +233,7 @@ EOF
     mcopy -s "${RELEASE_DIR}/3rdparty/bootloader/overlays" :: >"${SAVE_ERROR}" 2>&1 || show_error
   fi
 
-elif [ "${BOOTLOADER}" = "u-boot" -a \( -n "${UBOOT_SYSTEM}" -o -n "${SUBDEVICE}" \) ]; then
+elif [ "${BOOTLOADER}" = "u-boot" -a -n "${UBOOT_SYSTEM}" ]; then
   # create bootloader configuration
   echo "image: creating bootloader configuration..."
 
