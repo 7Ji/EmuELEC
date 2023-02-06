@@ -1,7 +1,10 @@
-all: release
+all: nopack
 
 system:
 	./scripts/image
+
+nopack:
+	./scripts/image nopack
 
 release:
 	./scripts/image release
