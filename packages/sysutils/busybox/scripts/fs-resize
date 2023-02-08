@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2009-2014 Stephan Raue (stephan@openelec.tv)
 
-if [ -e /storage/.please_resize_me ] ; then
+if [ -e /data/.please_resize_me ] ; then
   . /usr/lib/libreelec/functions
 
   hidecursor
@@ -11,7 +11,7 @@ if [ -e /storage/.please_resize_me ] ; then
   # this sh** was never intended to be used
   # on already installed and runing system
   if [ -d /storage/.kodi -o -d /storage/.config -o -d /storage/.cache ] ; then
-    rm -f /storage/.please_resize_me
+    rm -f /data/.please_resize_me
     sync
     echo "Resizing is not permitted - the system has already been initialised."
     StartProgress countdown "Rebooting in 15s... " 15 "NOW"
@@ -36,6 +36,7 @@ if [ -e /storage/.please_resize_me ] ; then
 
   # just in case
   if [ ! -z "$DISK" -a ! -z "$PART" ] ; then
+    umount $PART
     umount $PART
 
     echo "PARTITION RESIZING IN PROGRESS"
