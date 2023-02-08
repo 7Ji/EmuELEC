@@ -776,7 +776,7 @@ fi
 
 BACKUP_FILE=$(ls -1 /sysroot/storage/.restore/??????????????.tar 2>/dev/null | head -n 1)
 
-if [ -f /sysroot/storage/.please_resize_me ]; then
+if [ -f /sysroot/data/.please_resize_me ]; then
   INIT_UNIT="--unit=fs-resize.target"
 elif [ -f /sysroot/storage/.cache/reset_soft -o -f /sysroot/storage/.cache/reset_hard ]; then
   INIT_UNIT="--unit=factory-reset.target"
